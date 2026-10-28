@@ -1,11 +1,25 @@
 "use client";
 
-// 배당안분 계산기 화면 (PLAN 작업 11: 입력 화면, 작업 12: 입력 점검 표시)
+// 배당안분 계산기 화면 (PLAN 작업 11: 입력 화면, 작업 12: 입력 점검 표시, 작업 13: 결과 표)
 // 모든 계산은 브라우저 안에서만 하고, 입력한 데이터를 서버로 보내지 않는다 (PRD 7번).
 
 import { useState, type FormEvent, type ReactNode } from "react";
+import { calculateDividends } from "@/lib/allocate";
+import { dividendRate, formatWon, totalRate } from "@/lib/format";
 import { parsePaste } from "@/lib/parse";
 import { validateInput, type Issue } from "@/lib/validate";
+
+/** 계산이 끝난 한 건의 결과. 화면 표와 CSV가 이 값 하나를 함께 쓴다 */
+type Result = {
+  caseNumber: string;
+  round: bigint;
+  pool: bigint;
+  names: string[];
+  claims: bigint[];
+  dividends: bigint[];
+};
+
+const ZERO = BigInt(0);
 
 const PASTE_EXAMPLE = "채권자명\t확정 채권액\n가상채권자01\t12,345,678\n가상채권자02\t2,345,678";
 /** 오류·경고가 아주 많을 때(최대 1,000행) 화면에 보여줄 개수 */
@@ -16,6 +30,8 @@ export default function Calculator() {
   const [roundText, setRoundText] = useState("1");
   const [poolText, setPoolText] = useState("");
   const [pasteText, setPasteText] = useState("");
+  const [result, setResult] = useState<Result | null>(null);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   const parsed = parsePaste(pasteText);
   // 입력이 바뀔 때마다 바로 점검한다. 오류가 하나라도 있으면 계산 버튼을 막는다 (규칙 8)
@@ -26,8 +42,17 @@ export default function Calculator() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canCalculate) return;
-    // 계산·결과 표시(작업 13)를 여기에 연결한다
+    const ready = validation.ready;
+    if (!ready) return;
+    try {
+      // 안분 → 끝전 배분 → 합계 검증. 1원이라도 맞지 않으면 오류가 나서 결과를 보여주지 않는다 (규칙 3)
+      const dividends = calculateDividends(ready.pool, ready.claims);
+      setResult({ caseNumber: caseNumber.trim(), ...ready, dividends });
+      setCalcError(null);
+    } catch (e) {
+      setResult(null);
+      setCalcError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -108,7 +133,72 @@ export default function Calculator() {
           <span className="text-sm text-zinc-600 dark:text-zinc-400">모든 칸을 채우면 계산할 수 있습니다.</span>
         )}
       </div>
+
+      {calcError && <IssueList tone="error" title="계산 결과를 표시할 수 없습니다" issues={[{ message: calcError }]} />}
+      {result && <ResultTable result={result} />}
     </form>
+  );
+}
+
+function ResultTable({ result }: { result: Result }) {
+  const { caseNumber, round, pool, names, claims, dividends } = result;
+  const totalClaims = claims.reduce((sum, c) => sum + c, ZERO);
+  const totalDividends = dividends.reduce((sum, d) => sum + d, ZERO);
+  const verified = totalDividends === pool;
+
+  return (
+    <section aria-labelledby="result-title" className="space-y-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+      <h2 id="result-title" className="text-lg font-semibold">
+        계산 결과
+      </h2>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        {caseNumber} · {round.toString()}차 배당 · 배당재원 {formatWon(pool)}원 · 채권자 {names.length.toLocaleString()}명
+      </p>
+      <p
+        className={`rounded-md px-3 py-2 text-sm font-medium ${
+          verified
+            ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200"
+            : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200"
+        }`}
+      >
+        {verified ? "✅" : "❌"} 배당금 합계 {formatWon(totalDividends)}원 {verified ? "=" : "≠"} 배당재원 {formatWon(pool)}원
+      </p>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b-2 border-zinc-300 dark:border-zinc-700">
+              <th className="px-2 py-2 text-right">번호</th>
+              <th className="px-2 py-2 text-left">채권자명</th>
+              <th className="px-2 py-2 text-right">확정 채권액</th>
+              <th className="px-2 py-2 text-right">배당률(%)</th>
+              <th className="px-2 py-2 text-right">배당금</th>
+            </tr>
+          </thead>
+          <tbody className="tabular-nums">
+            {names.map((name, i) => (
+              <tr key={i} className="border-b border-zinc-200 dark:border-zinc-800">
+                <td className="px-2 py-1.5 text-right">{i + 1}</td>
+                <td className="px-2 py-1.5">{name}</td>
+                <td className="px-2 py-1.5 text-right">{formatWon(claims[i])}</td>
+                <td className="px-2 py-1.5 text-right">{dividendRate(dividends[i], claims[i])}</td>
+                <td className="px-2 py-1.5 text-right">{formatWon(dividends[i])}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="tabular-nums font-semibold">
+            <tr className="border-t-2 border-zinc-300 dark:border-zinc-700">
+              <td className="px-2 py-2" colSpan={2}>
+                합계
+              </td>
+              <td className="px-2 py-2 text-right">{formatWon(totalClaims)}</td>
+              <td className="px-2 py-2 text-right">{totalRate(pool, totalClaims)}</td>
+              <td className="px-2 py-2 text-right">{formatWon(totalDividends)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
   );
 }
 
