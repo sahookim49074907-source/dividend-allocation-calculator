@@ -1,0 +1,60 @@
+// 붙여넣기 해석 (PLAN 작업 5: PRD must 1 규칙 11)
+// 엑셀에서 복사한 "채권자명 / 확정 채권액" 두 열을 채권자 목록으로 바꾼다.
+// 값이 맞는지 판단(빈칸·0원·인원 제한 등)은 입력 점검(작업 6)이 맡고, 여기서는 읽기만 한다.
+
+export type ParsedRow = {
+  /** 붙여넣은 글에서 몇 번째 줄인지 (1부터). 오류 안내에 쓴다. */
+  line: number;
+  name: string;
+  /** 사용자가 넣은 금액 글자 그대로 */
+  amountText: string;
+  /** 정리한 금액. 1원 단위 정수로 읽을 수 없으면 null */
+  amount: bigint | null;
+};
+
+export type ParseResult = {
+  rows: ParsedRow[];
+  /** 첫 줄을 머리글로 보고 건너뛰었는지 */
+  headerSkipped: boolean;
+};
+
+/** 쉼표·공백·"원"을 지운 뒤 0 이상의 정수로 읽는다. 음수·소수·글자가 섞이면 null */
+export function parseAmount(text: string): bigint | null {
+  const cleaned = text.replace(/[,\s원]/g, "");
+  return /^\d+$/.test(cleaned) ? BigInt(cleaned) : null;
+}
+
+/**
+ * 한 줄을 [채권자명, 금액 글자]로 나눈다. 엑셀 복사는 탭으로 나뉜다.
+ * 탭이 없으면 맨 끝의 공백 없는 숫자 덩어리 하나만 금액으로 본다 ("가상 채권자 01  1,234,567원" → 이름에 01이 남음).
+ */
+function splitLine(line: string): [string, string] {
+  if (line.includes("\t")) {
+    const [name = "", amount = ""] = line.split("\t");
+    return [name.trim(), amount.trim()];
+  }
+  const match = line.match(/^(.*\S)\s+(-?[\d,.]+\s?원?)\s*$/);
+  if (match) return [match[1].trim(), match[2].trim()];
+  return [line.trim(), ""];
+}
+
+export function parsePaste(text: string): ParseResult {
+  const lines = text.split(/\r?\n/);
+  const rows: ParsedRow[] = [];
+  let headerSkipped = false;
+
+  lines.forEach((raw, i) => {
+    if (raw.trim() === "") return;
+    const [name, amountText] = splitLine(raw);
+    const amount = parseAmount(amountText);
+
+    // 첫 번째 내용 줄의 금액 칸이 숫자가 아니고 줄 전체에 숫자가 하나도 없으면 머리글로 보고 건너뛴다
+    if (rows.length === 0 && !headerSkipped && amount === null && !/\d/.test(raw)) {
+      headerSkipped = true;
+      return;
+    }
+    rows.push({ line: i + 1, name, amountText, amount });
+  });
+
+  return { rows, headerSkipped };
+}
