@@ -1,4 +1,4 @@
-// 계산 정답 시험 (PRD 개발 단위 4)
+// 계산 정답 시험 (PLAN 작업 4)
 // test-cases 폴더의 사례 CSV마다 "엑셀정답" 열과 앱 계산 결과를 원 단위까지 비교한다.
 // 실행: node test-cases/check.mjs
 

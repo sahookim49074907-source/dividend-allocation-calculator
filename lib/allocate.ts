@@ -1,4 +1,4 @@
-// 배당금 안분 계산 (PRD 개발 단위 1: must 1 규칙 1·4)
+// 배당금 안분 계산 (PLAN 작업 1: must 1 규칙 1·4)
 // 금액은 모두 bigint(정수)로 다룬다. 일반 number는 약 9천조를 넘으면 원 단위가 틀어지기 때문이다.
 
 const ZERO = BigInt(0);
@@ -7,7 +7,7 @@ const ONE = BigInt(1);
 export type AllocationRow = {
   /** 원 미만을 버린 배당금 */
   amount: bigint;
-  /** 버린 원 미만 부분의 분자 (실제 값 = remainder ÷ totalClaims). 끝전 배분(개발 단위 2)에 쓴다. */
+  /** 버린 원 미만 부분의 분자 (실제 값 = remainder ÷ totalClaims). 끝전 배분(PLAN 작업 2)에 쓴다. */
   remainder: bigint;
 };
 
@@ -39,7 +39,7 @@ export function allocate(pool: bigint, claims: bigint[]): AllocationResult {
 }
 
 /**
- * 끝전 배분 (PRD 개발 단위 2: must 1 규칙 2)
+ * 끝전 배분 (PLAN 작업 2: must 1 규칙 2)
  * 남은 끝전을 버린 원 미만 부분이 큰 채권자부터 1원씩 나눠 준다.
  * 원 미만 부분이 같으면 목록에서 먼저 나온 채권자에게 준다.
  * 돌려주는 배열은 입력한 채권자 순서 그대로의 최종 배당금이다.
@@ -65,7 +65,7 @@ export function distributeLeftover({ rows, leftover }: AllocationResult): bigint
 }
 
 /**
- * 합계 검증 (PRD 개발 단위 3: must 1 규칙 3)
+ * 합계 검증 (PLAN 작업 3: must 1 규칙 3)
  * 배당금 합계와 배당재원이 1원이라도 다르면 오류를 낸다.
  */
 export function verifyTotal(pool: bigint, amounts: bigint[]): void {

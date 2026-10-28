@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 기획서 [PRD.md](PRD.md)가 기준 문서다. 기능·규칙·범위를 바꾸기 전에 PRD를 먼저 확인한다.
 - PRD의 "AI가 지킬 규칙"(must 1 규칙 1~14, must 2 규칙 1~6)은 구현이 반드시 지켜야 하는 명세다.
-- 작업은 PRD "9. 개발 단위" 순서대로 한 단위씩 진행한다.
+- 작업은 [PLAN.md](PLAN.md)의 작업 번호(1~21) 순서대로 하나씩 진행한다. 완료 표시(✅)도 PLAN.md에 한다. PRD "9. 개발 단위"는 처음 정한 큰 단위라 번호가 다르다.
 - 사용자는 비개발자(파산사건 담당자)다. 설명은 한국어로, 초보자 눈높이에 맞춘다.
 
 ## 명령어
@@ -47,7 +47,7 @@ node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 
 - **시험 스크립트는 `.mjs`:** tsconfig `include`에 `.mjs`가 없어서, `../lib/allocate.ts`를 import해도 타입 검사·빌드에 걸리지 않는다.
 - **시험 CSV 형식:** 1행은 `배당재원`, 2행은 머리글, 3행부터 `번호,채권자명,확정채권액,엑셀정답`이다.
   - **엑셀정답** 열은 사용자가 엑셀로 직접 계산한 값이어야 한다. 앱 코드로 계산해서 채우면 시험의 의미가 없어지므로 Claude가 채우지 않는다.
-- **현재 상태:** `app/page.tsx`, `app/layout.tsx`는 아직 create-next-app 기본 화면이다. 입력·결과 화면은 개발 단위 7~8번에서 만든다.
+- **현재 상태:** must 기능 구현 완료(PLAN 1~3, 5~17, 19)와 nice 20(인쇄) 완료. 화면은 `app/_components/Calculator.tsx` 하나에 있다. 남은 작업은 PLAN 4(엑셀 정답 대기)·18(사람 작업 시간 측정)·21(엑셀 파일 올리기, 추가 라이브러리 결정 필요)이다.
 
 ## 범위 제한
 
