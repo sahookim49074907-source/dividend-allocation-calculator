@@ -86,7 +86,7 @@ export default function Calculator() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-      <fieldset className="grid gap-4 sm:grid-cols-3">
+      <fieldset className="grid gap-4 sm:grid-cols-3 print:hidden">
         <legend className="mb-2 text-lg font-semibold">사건 정보</legend>
         <Field label="사건번호" htmlFor="caseNumber">
           <input
@@ -121,7 +121,7 @@ export default function Calculator() {
         </Field>
       </fieldset>
 
-      <div>
+      <div className="print:hidden">
         <label htmlFor="creditors" className="text-lg font-semibold">
           채권자 목록
         </label>
@@ -150,7 +150,7 @@ export default function Calculator() {
         <IssueList tone="warning" title="확인해 주세요 (계산은 할 수 있습니다)" issues={validation.warnings} />
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 print:hidden">
         <button
           type="submit"
           disabled={!canCalculate}
@@ -164,7 +164,7 @@ export default function Calculator() {
       </div>
 
       {resultCleared && (
-        <p role="status" className="rounded-md bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
+        <p role="status" className="rounded-md bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800 print:hidden">
           입력이 바뀌어 이전 계산 결과를 지웠습니다. [계산하기]를 다시 눌러 주세요.
         </p>
       )}
@@ -196,19 +196,26 @@ function ResultTable({ result }: { result: Result }) {
   }
 
   return (
-    <section aria-labelledby="result-title" className="space-y-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section
+      aria-labelledby="result-title"
+      className="space-y-3 border-t border-zinc-200 pt-6 dark:border-zinc-800 print:border-0 print:pt-0"
+    >
+      {/* 인쇄할 때만 보이는 제목 (PLAN 작업 20) */}
+      <h1 className="hidden text-center text-xl font-bold print:block">파산배당금 안분 내역서</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <h2 id="result-title" className="text-lg font-semibold">
           계산 결과
         </h2>
         {verified && (
-          <button
-            type="button"
-            onClick={download}
-            className="rounded-md border border-blue-600 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950"
-          >
-            안분 내역서 내려받기 (CSV)
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {/* 인쇄하기 (PLAN 작업 20): 브라우저 인쇄 기능을 쓰고, 입력 칸·버튼은 인쇄용 스타일로 숨긴다 */}
+            <button type="button" onClick={() => window.print()} className={secondaryButtonClass}>
+              인쇄하기
+            </button>
+            <button type="button" onClick={download} className={secondaryButtonClass}>
+              안분 내역서 내려받기 (CSV)
+            </button>
+          </div>
         )}
       </div>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -271,7 +278,7 @@ function IssueList({ tone, title, issues }: { tone: "error" | "warning"; title: 
   const hidden = issues.length - shown.length;
 
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={`rounded-md border p-4 text-sm ${styles}`}>
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-md border p-4 text-sm print:hidden ${styles}`}>
       <p className="font-semibold">
         {tone === "error" ? "❌" : "⚠"} {title} ({issues.length.toLocaleString()}건)
       </p>
@@ -284,6 +291,9 @@ function IssueList({ tone, title, issues }: { tone: "error" | "warning"; title: 
     </div>
   );
 }
+
+const secondaryButtonClass =
+  "rounded-md border border-blue-600 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950";
 
 const inputClass =
   "rounded-md border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900 focus:outline-2 focus:outline-blue-600";

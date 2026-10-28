@@ -23,3 +23,24 @@ body {
   /* 한글이 잘 보이는 윈도우·맥 기본 글꼴을 쓴다 */
   font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
 }
+
+/* 인쇄용 스타일 (PLAN 작업 20): A4 세로, 흰 바탕에 검은 글씨, 표가 여러 쪽이면 머리글 반복 */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  :root {
+    --background: #ffffff;
+    --foreground: #000000;
+  }
+  body {
+    font-size: 10pt;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}
