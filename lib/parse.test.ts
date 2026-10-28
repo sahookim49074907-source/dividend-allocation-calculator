@@ -13,6 +13,17 @@ describe("parseAmount: 금액 정리 (규칙 11)", () => {
     expect(parseAmount(" 300 000 ")).toBe(BigInt(300000));
   });
 
+  it("엑셀 통화·회계 서식의 ₩ 표시를 지운다", () => {
+    expect(parseAmount("₩1,000,000")).toBe(BigInt(1000000));
+    expect(parseAmount("₩ 1,000,000")).toBe(BigInt(1000000));
+    expect(parseAmount("￦2,500")).toBe(BigInt(2500)); // 전각 원화 기호
+  });
+
+  it("회계 서식에서 0을 뜻하는 '-'는 0으로 읽는다 (입력 점검에서 0원 안내)", () => {
+    expect(parseAmount("-")).toBe(BigInt(0));
+    expect(parseAmount("₩ -")).toBe(BigInt(0));
+  });
+
   it("음수·소수·글자는 읽지 않는다", () => {
     expect(parseAmount("-100")).toBeNull();
     expect(parseAmount("100.5")).toBeNull();
@@ -40,6 +51,10 @@ describe("parsePaste: 엑셀 붙여넣기", () => {
       [1, "가상 채권자 01", 1234567],
       [2, "가상채권자05", 2000000],
     ]);
+  });
+
+  it("탭이 없을 때도 ₩ 서식 금액을 읽는다", () => {
+    expect(simple("가상채권자01 ₩1,234,567")).toEqual([[1, "가상채권자01", 1234567]]);
   });
 
   it("첫 줄이 금액 빈칸인 데이터는 머리글로 보지 않는다", () => {

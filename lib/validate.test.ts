@@ -71,6 +71,17 @@ describe("validateInput", () => {
     expect(r.errors[0].message).toContain("숨긴 열");
   });
 
+  it("맨 앞이 번호 열이면 번호 열을 빼라고 알려준다", () => {
+    const r = check({ paste: "1\t가상채권자01\t1,000,000\n2\t가상채권자02\t2,000,000" });
+    expect(r.ready).toBeNull();
+    expect(r.errors[0].message).toContain("맨 앞 번호 열");
+  });
+
+  it("₩ 서식 금액도 계산할 수 있다", () => {
+    const r = check({ poolText: "₩1,000,000", paste: "가상채권자01\t₩1,000,000\n가상채권자02\t₩ 2,000,000" });
+    expect(r.ready?.claims).toEqual([BigInt(1000000), BigInt(2000000)]);
+  });
+
   it("엑셀이 끝에 붙이는 빈 칸(탭)은 열로 세지 않는다", () => {
     expect(check({ paste: "가상채권자01\t1,000,000\t\t\n가상채권자02\t2,000,000\t" }).ready).not.toBeNull();
   });

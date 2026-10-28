@@ -25,9 +25,13 @@ export type ParseResult = {
 /** 머리글로 볼 낱말. 채권자명에는 잘 쓰이지 않는 금액 쪽 낱말만 쓴다 ("채권자"는 이름에도 들어가므로 제외) */
 const HEADER_WORDS = /금액|채권액|amount/i;
 
-/** 쉼표·공백·"원"을 지운 뒤 0 이상의 정수로 읽는다. 음수·소수·글자가 섞이면 null */
+/**
+ * 쉼표·공백·"원"·원화 기호(₩, ￦)를 지운 뒤 0 이상의 정수로 읽는다. 음수·소수·글자가 섞이면 null.
+ * 엑셀 회계 서식은 0을 "-"로 보여주므로, "-" 하나만 남으면 0으로 읽는다 (입력 점검에서 0원 안내).
+ */
 export function parseAmount(text: string): bigint | null {
-  const cleaned = text.replace(/[,\s원]/g, "");
+  const cleaned = text.replace(/[,\s원₩￦]/g, "");
+  if (cleaned === "-") return BigInt(0);
   return /^\d+$/.test(cleaned) ? BigInt(cleaned) : null;
 }
 
@@ -43,7 +47,7 @@ function splitLine(line: string): [string, string, number] {
     const [name = "", amount = ""] = cells;
     return [name, amount, cells.length];
   }
-  const match = line.match(/^(.*\S)\s+(-?[\d,.]+\s?원?)\s*$/);
+  const match = line.match(/^(.*\S)\s+([₩￦]?-?[\d,.]+\s?원?)\s*$/);
   if (match) return [match[1].trim(), match[2].trim(), 2];
   return [line.trim(), "", 1];
 }

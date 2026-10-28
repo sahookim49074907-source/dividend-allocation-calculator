@@ -55,10 +55,11 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   for (const row of rows) {
     // 열이 3개 이상이면 어느 열이 확정 채권액인지 알 수 없어 다른 금액(예: 신고액)으로 계산될 수 있다 (CHECK 2번)
     if (row.columnCount > 2) {
-      errors.push({
-        line: row.line,
-        message: `${row.line}행: 열이 ${row.columnCount}개입니다. 채권자명과 확정 채권액 두 열만 복사하세요. (엑셀에서 숨긴 열도 함께 복사될 수 있습니다)`,
-      });
+      // 첫 칸이 숫자뿐이면 표 맨 앞의 번호 열까지 복사한 경우가 대부분이다 (CHECK 7번)
+      const hint = /^\d+$/.test(row.name)
+        ? "맨 앞 번호 열은 빼고, 채권자명과 확정 채권액 두 열만 복사하세요."
+        : "채권자명과 확정 채권액 두 열만 복사하세요. (엑셀에서 숨긴 열도 함께 복사될 수 있습니다)";
+      errors.push({ line: row.line, message: `${row.line}행: 열이 ${row.columnCount}개입니다. ${hint}` });
       continue;
     }
     if (row.name === "") {
