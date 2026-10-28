@@ -35,6 +35,21 @@ export function textCell(value: string): string {
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
+/**
+ * 내려받을 파일명: 사건번호_N차배당_안분내역서.csv (PLAN 작업 9: must 2 규칙 4)
+ * 사건번호에 파일명으로 쓸 수 없는 문자(/ \ : * ? " < > | 와 제어 문자)는 _ 로 바꾼다.
+ * 윈도우는 끝의 점·공백을 지워 버리므로 미리 정리한다.
+ */
+export function statementFileName(caseNumber: string, round: bigint): string {
+  const safeCase =
+    caseNumber
+      .trim()
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\/\\:*?"<>|\u0000-\u001f]/g, "_")
+      .replace(/[. ]+$/, "") || "사건번호없음";
+  return `${safeCase}_${round}차배당_안분내역서.csv`;
+}
+
 export function buildStatementCsv(input: StatementInput): string {
   const { caseNumber, round, pool, names, claims, dividends, today } = input;
   if (names.length !== claims.length || claims.length !== dividends.length) {
