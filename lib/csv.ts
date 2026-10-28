@@ -44,7 +44,6 @@ export function statementFileName(caseNumber: string, round: bigint): string {
   const safeCase =
     caseNumber
       .trim()
-      // eslint-disable-next-line no-control-regex
       .replace(/[\/\\:*?"<>|\u0000-\u001f]/g, "_")
       .replace(/[. ]+$/, "") || "사건번호없음";
   return `${safeCase}_${round}차배당_안분내역서.csv`;
