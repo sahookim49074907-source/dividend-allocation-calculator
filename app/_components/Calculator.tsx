@@ -3,7 +3,7 @@
 // 배당안분 계산기 화면 (PLAN 작업 11: 입력 화면, 작업 12: 입력 점검 표시, 작업 13: 결과 표)
 // 모든 계산은 브라우저 안에서만 하고, 입력한 데이터를 서버로 보내지 않는다 (PRD 7번).
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { calculateDividends } from "@/lib/allocate";
 import { dividendRate, formatWon, totalRate } from "@/lib/format";
 import { parsePaste } from "@/lib/parse";
@@ -53,6 +53,19 @@ export default function Calculator() {
   const canCalculate = validation.ready !== null;
   // 아무것도 넣지 않은 처음 화면에서는 오류 목록을 띄우지 않는다
   const touched = caseNumber !== "" || poolText !== "" || pasteText.trim() !== "";
+
+  // 입력한 내용이 있을 때 새로고침하거나 창을 닫으려 하면 확인 창을 띄운다 (PLAN 작업 15: 규칙 14)
+  // 데이터를 저장하지 않으므로(PRD 7번) 페이지를 떠나면 입력이 모두 사라진다.
+  // 확인 창의 문구는 브라우저가 정하며, 직접 바꿀 수 없다.
+  useEffect(() => {
+    if (!touched) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = ""; // 오래된 브라우저 호환용
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [touched]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
