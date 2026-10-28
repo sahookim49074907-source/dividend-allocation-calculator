@@ -139,7 +139,8 @@ export default function Calculator() {
         />
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
           읽은 채권자 {parsed.rows.length.toLocaleString()}명
-          {parsed.headerSkipped && " (첫 줄 머리글 건너뜀)"}
+          {parsed.headerText !== null &&
+            ` (첫 줄 "${parsed.headerText.replace(/\t+/g, " / ")}"은(는) 머리글로 보고 건너뜀)`}
         </p>
       </div>
 

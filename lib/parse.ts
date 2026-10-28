@@ -16,7 +16,12 @@ export type ParseResult = {
   rows: ParsedRow[];
   /** 첫 줄을 머리글로 보고 건너뛰었는지 */
   headerSkipped: boolean;
+  /** 건너뛴 첫 줄의 글 그대로. 화면에 보여줘서 사용자가 확인할 수 있게 한다 */
+  headerText: string | null;
 };
+
+/** 머리글로 볼 낱말. 채권자명에는 잘 쓰이지 않는 금액 쪽 낱말만 쓴다 ("채권자"는 이름에도 들어가므로 제외) */
+const HEADER_WORDS = /금액|채권액|amount/i;
 
 /** 쉼표·공백·"원"을 지운 뒤 0 이상의 정수로 읽는다. 음수·소수·글자가 섞이면 null */
 export function parseAmount(text: string): bigint | null {
@@ -41,20 +46,21 @@ function splitLine(line: string): [string, string] {
 export function parsePaste(text: string): ParseResult {
   const lines = text.split(/\r?\n/);
   const rows: ParsedRow[] = [];
-  let headerSkipped = false;
+  let headerText: string | null = null;
 
   lines.forEach((raw, i) => {
     if (raw.trim() === "") return;
     const [name, amountText] = splitLine(raw);
     const amount = parseAmount(amountText);
 
-    // 첫 번째 내용 줄의 금액 칸이 숫자가 아니고 줄 전체에 숫자가 하나도 없으면 머리글로 보고 건너뛴다
-    if (rows.length === 0 && !headerSkipped && amount === null && !/\d/.test(raw)) {
-      headerSkipped = true;
+    // 첫 번째 내용 줄의 금액 칸이 숫자가 아니고, 줄에 머리글 낱말(금액·채권액)이 있을 때만 건너뛴다.
+    // 낱말이 없으면 채권자로 남겨서, 금액이 비었으면 입력 점검에서 오류로 알려준다 (조용히 빠지지 않게).
+    if (rows.length === 0 && headerText === null && amount === null && HEADER_WORDS.test(raw)) {
+      headerText = raw.trim();
       return;
     }
     rows.push({ line: i + 1, name, amountText, amount });
   });
 
-  return { rows, headerSkipped };
+  return { rows, headerSkipped: headerText !== null, headerText };
 }

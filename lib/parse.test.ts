@@ -48,6 +48,26 @@ describe("parsePaste: 엑셀 붙여넣기", () => {
     expect(r.rows).toHaveLength(2);
   });
 
+  it("이름에 숫자가 없고 금액이 빈 첫 줄도 채권자로 남긴다 (조용히 빠지지 않음)", () => {
+    const r = parsePaste("주식회사 가나\t\n가상채권자02\t100");
+    expect(r.headerSkipped).toBe(false);
+    expect(r.rows.map((row) => row.name)).toEqual(["주식회사 가나", "가상채권자02"]);
+  });
+
+  it("머리글 낱말(금액·채권액)이 있는 첫 줄만 건너뛰고, 건너뛴 글을 알려준다", () => {
+    const tab = parsePaste("채권자명\t확정 채권액(원)\n가상채권자01\t100");
+    expect(tab.headerSkipped).toBe(true);
+    expect(tab.headerText).toBe("채권자명\t확정 채권액(원)");
+    expect(tab.rows).toHaveLength(1);
+
+    const space = parsePaste("성명 금액\n가상채권자01 100");
+    expect(space.headerSkipped).toBe(true);
+    expect(space.rows.map((row) => row.name)).toEqual(["가상채권자01"]);
+
+    // 머리글 낱말이 없으면 숫자가 아니어도 건너뛰지 않는다 (입력 점검에서 오류로 알려줌)
+    expect(parsePaste("가나다\t라마바\n가상채권자01\t100").headerSkipped).toBe(false);
+  });
+
   it("빈 입력은 빈 목록", () => {
     expect(parsePaste("  \n\n").rows).toEqual([]);
   });
