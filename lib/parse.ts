@@ -10,6 +10,8 @@ export type ParsedRow = {
   amountText: string;
   /** 정리한 금액. 1원 단위 정수로 읽을 수 없으면 null */
   amount: bigint | null;
+  /** 내용이 있는 열 수 (끝의 빈 칸 제외). 3 이상이면 입력 점검에서 막는다 */
+  columnCount: number;
 };
 
 export type ParseResult = {
@@ -33,14 +35,17 @@ export function parseAmount(text: string): bigint | null {
  * 한 줄을 [채권자명, 금액 글자]로 나눈다. 엑셀 복사는 탭으로 나뉜다.
  * 탭이 없으면 맨 끝의 공백 없는 숫자 덩어리 하나만 금액으로 본다 ("가상 채권자 01  1,234,567원" → 이름에 01이 남음).
  */
-function splitLine(line: string): [string, string] {
+function splitLine(line: string): [string, string, number] {
   if (line.includes("\t")) {
-    const [name = "", amount = ""] = line.split("\t");
-    return [name.trim(), amount.trim()];
+    const cells = line.split("\t").map((cell) => cell.trim());
+    // 엑셀이 줄 끝에 붙이는 빈 칸은 열로 세지 않는다
+    while (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
+    const [name = "", amount = ""] = cells;
+    return [name, amount, cells.length];
   }
   const match = line.match(/^(.*\S)\s+(-?[\d,.]+\s?원?)\s*$/);
-  if (match) return [match[1].trim(), match[2].trim()];
-  return [line.trim(), ""];
+  if (match) return [match[1].trim(), match[2].trim(), 2];
+  return [line.trim(), "", 1];
 }
 
 export function parsePaste(text: string): ParseResult {
@@ -50,7 +55,7 @@ export function parsePaste(text: string): ParseResult {
 
   lines.forEach((raw, i) => {
     if (raw.trim() === "") return;
-    const [name, amountText] = splitLine(raw);
+    const [name, amountText, columnCount] = splitLine(raw);
     const amount = parseAmount(amountText);
 
     // 첫 번째 내용 줄의 금액 칸이 숫자가 아니고, 줄에 머리글 낱말(금액·채권액)이 있을 때만 건너뛴다.
@@ -59,7 +64,7 @@ export function parsePaste(text: string): ParseResult {
       headerText = raw.trim();
       return;
     }
-    rows.push({ line: i + 1, name, amountText, amount });
+    rows.push({ line: i + 1, name, amountText, amount, columnCount });
   });
 
   return { rows, headerSkipped: headerText !== null, headerText };

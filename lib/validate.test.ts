@@ -63,6 +63,18 @@ describe("validateInput", () => {
     expect(check({ paste: "가상채권자01\t1,000,000\n가상채권자02\t1,000,000" }).warnings).toEqual([]);
   });
 
+  it("열이 3개 이상이면 어느 열이 금액인지 알 수 없으므로 막는다", () => {
+    const r = check({ paste: "가상채권자01\t9,000,000\t1,000,000\n가상채권자02\t9,000,000\t2,000,000" });
+    expect(r.ready).toBeNull();
+    expect(r.errors.map((e) => e.line)).toEqual([1, 2]);
+    expect(r.errors[0].message).toContain("열이 3개");
+    expect(r.errors[0].message).toContain("숨긴 열");
+  });
+
+  it("엑셀이 끝에 붙이는 빈 칸(탭)은 열로 세지 않는다", () => {
+    expect(check({ paste: "가상채권자01\t1,000,000\t\t\n가상채권자02\t2,000,000\t" }).ready).not.toBeNull();
+  });
+
   it("'합계'가 이름 일부인 채권자는 막지 않는다", () => {
     expect(check({ paste: "합계상사\t1,000,000\n가상채권자02\t1,000,000" }).ready).not.toBeNull();
   });

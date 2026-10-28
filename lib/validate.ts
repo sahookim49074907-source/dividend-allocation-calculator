@@ -53,6 +53,14 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
 
   // 행마다 빈칸·금액 확인 (규칙 6·8)
   for (const row of rows) {
+    // 열이 3개 이상이면 어느 열이 확정 채권액인지 알 수 없어 다른 금액(예: 신고액)으로 계산될 수 있다 (CHECK 2번)
+    if (row.columnCount > 2) {
+      errors.push({
+        line: row.line,
+        message: `${row.line}행: 열이 ${row.columnCount}개입니다. 채권자명과 확정 채권액 두 열만 복사하세요. (엑셀에서 숨긴 열도 함께 복사될 수 있습니다)`,
+      });
+      continue;
+    }
     if (row.name === "") {
       errors.push({ line: row.line, message: `${row.line}행: 채권자명이 비어 있습니다.` });
     } else if (TOTAL_ROW_NAME.test(row.name.replace(/\s/g, ""))) {
