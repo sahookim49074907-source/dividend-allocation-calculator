@@ -5,6 +5,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { calculateDividends } from "@/lib/allocate";
+import { buildStatementCsv, statementFileName } from "@/lib/csv";
 import { dividendRate, formatWon, totalRate } from "@/lib/format";
 import { parsePaste } from "@/lib/parse";
 import { validateInput, type Issue } from "@/lib/validate";
@@ -179,11 +180,37 @@ function ResultTable({ result }: { result: Result }) {
   const totalDividends = dividends.reduce((sum, d) => sum + d, ZERO);
   const verified = totalDividends === pool;
 
+  /**
+   * 안분 내역서 CSV 내려받기 (PLAN 작업 16: must 2)
+   * 화면 표와 같은 result 값으로 만들므로 숫자가 1원도 다를 수 없다 (규칙 6).
+   * 파일은 브라우저 안에서 만들어 바로 저장하며, 서버로 보내지 않는다.
+   */
+  function download() {
+    const csv = buildStatementCsv({ ...result, today: new Date() });
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = statementFileName(caseNumber, round);
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section aria-labelledby="result-title" className="space-y-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-      <h2 id="result-title" className="text-lg font-semibold">
-        계산 결과
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="result-title" className="text-lg font-semibold">
+          계산 결과
+        </h2>
+        {verified && (
+          <button
+            type="button"
+            onClick={download}
+            className="rounded-md border border-blue-600 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950"
+          >
+            안분 내역서 내려받기 (CSV)
+          </button>
+        )}
+      </div>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {caseNumber} · {round.toString()}차 배당 · 배당재원 {formatWon(pool)}원 · 채권자 {names.length.toLocaleString()}명
       </p>
