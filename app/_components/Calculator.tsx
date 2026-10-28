@@ -1,12 +1,15 @@
 "use client";
 
-// 배당안분 계산기 화면 (PLAN 작업 11: 입력 화면)
+// 배당안분 계산기 화면 (PLAN 작업 11: 입력 화면, 작업 12: 입력 점검 표시)
 // 모든 계산은 브라우저 안에서만 하고, 입력한 데이터를 서버로 보내지 않는다 (PRD 7번).
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { parsePaste } from "@/lib/parse";
+import { validateInput, type Issue } from "@/lib/validate";
 
 const PASTE_EXAMPLE = "채권자명\t확정 채권액\n가상채권자01\t12,345,678\n가상채권자02\t2,345,678";
+/** 오류·경고가 아주 많을 때(최대 1,000행) 화면에 보여줄 개수 */
+const MAX_ISSUES_SHOWN = 20;
 
 export default function Calculator() {
   const [caseNumber, setCaseNumber] = useState("");
@@ -15,10 +18,16 @@ export default function Calculator() {
   const [pasteText, setPasteText] = useState("");
 
   const parsed = parsePaste(pasteText);
+  // 입력이 바뀔 때마다 바로 점검한다. 오류가 하나라도 있으면 계산 버튼을 막는다 (규칙 8)
+  const validation = validateInput({ caseNumber, roundText, poolText, parsed });
+  const canCalculate = validation.ready !== null;
+  // 아무것도 넣지 않은 처음 화면에서는 오류 목록을 띄우지 않는다
+  const touched = caseNumber !== "" || poolText !== "" || pasteText.trim() !== "";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // 입력 점검(작업 12)과 계산·결과 표시(작업 13)를 여기에 연결한다
+    if (!canCalculate) return;
+    // 계산·결과 표시(작업 13)를 여기에 연결한다
   }
 
   return (
@@ -80,13 +89,49 @@ export default function Calculator() {
         </p>
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-blue-600 px-6 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
-      >
-        계산하기
-      </button>
+      {touched && validation.errors.length > 0 && (
+        <IssueList tone="error" title="계산하려면 아래를 고쳐 주세요" issues={validation.errors} />
+      )}
+      {validation.warnings.length > 0 && (
+        <IssueList tone="warning" title="확인해 주세요 (계산은 할 수 있습니다)" issues={validation.warnings} />
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={!canCalculate}
+          className="rounded-md bg-blue-600 px-6 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
+        >
+          계산하기
+        </button>
+        {!touched && (
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">모든 칸을 채우면 계산할 수 있습니다.</span>
+        )}
+      </div>
     </form>
+  );
+}
+
+function IssueList({ tone, title, issues }: { tone: "error" | "warning"; title: string; issues: Issue[] }) {
+  const styles =
+    tone === "error"
+      ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
+      : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200";
+  const shown = issues.slice(0, MAX_ISSUES_SHOWN);
+  const hidden = issues.length - shown.length;
+
+  return (
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-md border p-4 text-sm ${styles}`}>
+      <p className="font-semibold">
+        {tone === "error" ? "❌" : "⚠"} {title} ({issues.length.toLocaleString()}건)
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-5">
+        {shown.map((issue, i) => (
+          <li key={i}>{issue.message}</li>
+        ))}
+      </ul>
+      {hidden > 0 && <p className="mt-2">외 {hidden.toLocaleString()}건이 더 있습니다.</p>}
+    </div>
   );
 }
 
