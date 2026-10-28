@@ -73,7 +73,7 @@ node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 
 - 비밀 값 이름에 `NEXT_PUBLIC_`을 붙이지 않는다. 이 이름은 브라우저에 그대로 공개되기 때문이다.
 
 ### Git과 커밋
-- `.env` 같은 비밀 정보 파일과 `node_modules` 폴더는 `.gitignore`에 등록해 두고, 절대 커밋하지 않는다. 지금은 `.env*`, `/node_modules`, `/trash-can/`이 등록돼 있다.
+- `.env` 같은 비밀 정보 파일과 `node_modules` 폴더는 `.gitignore`에 등록해 두고, 절대 커밋하지 않는다. 지금은 `.env*`, `/node_modules`, `/trash-can/`, `/.bkit/`이 등록돼 있다.
 - 커밋하기 전에 `git status`와 스테이징된 파일 목록으로 `.env` 같은 비밀 값 파일이 들어가지 않았는지 확인한다.
 - 커밋 메시지는 한국어로, 무엇을 왜 바꿨는지 한 줄로 쓴다.
 

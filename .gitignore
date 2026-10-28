@@ -39,6 +39,9 @@ yarn-error.log*
 # 삭제 대기 파일 (사용자가 직접 확인 후 삭제)
 /trash-can/
 
+# bkit 플러그인 작업 기록 (자동 생성 로그·상태)
+/.bkit/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
