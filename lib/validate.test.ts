@@ -45,6 +45,28 @@ describe("validateInput", () => {
     expect(check({ poolText: "2,000,001", paste }).errors[0].message).toContain("배당재원이 총 채권액을 넘습니다");
   });
 
+  it("'합계'·'소계' 같은 이름의 행은 채권자로 계산하지 않고 막는다", () => {
+    for (const label of ["합계", "소 계", "총계", "계", "Total"]) {
+      const r = check({ paste: `가상채권자01\t1,000,000\n가상채권자02\t1,000,000\n${label}\t2,000,000` });
+      expect(r.ready).toBeNull();
+      expect(r.errors[0].line).toBe(3);
+      expect(r.errors[0].message).toContain("합계·소계 행은 빼고");
+    }
+  });
+
+  it("이름이 없어도 금액이 나머지 합계와 같은 행은 합계 행일 수 있다고 경고한다", () => {
+    const r = check({ paste: "가상채권자01\t1,000,000\n가상채권자02\t2,000,000\n가상채권자03\t3,000,000" });
+    expect(r.ready).not.toBeNull();
+    expect(r.warnings.map((w) => w.line)).toEqual([3]);
+    expect(r.warnings[0].message).toContain("합계 행이면 빼고");
+    // 채권자가 2명뿐이면 서로 같은 금액일 수 있으므로 경고하지 않는다
+    expect(check({ paste: "가상채권자01\t1,000,000\n가상채권자02\t1,000,000" }).warnings).toEqual([]);
+  });
+
+  it("'합계'가 이름 일부인 채권자는 막지 않는다", () => {
+    expect(check({ paste: "합계상사\t1,000,000\n가상채권자02\t1,000,000" }).ready).not.toBeNull();
+  });
+
   it("같은 이름은 경고만 하고 계산은 허용한다 (규칙 10)", () => {
     const r = check({ paste: "가상채권자01\t500000\n가상채권자02\t300000\n가상채권자01\t700000" });
     expect(r.ready).not.toBeNull();

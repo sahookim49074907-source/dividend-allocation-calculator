@@ -26,6 +26,9 @@ export type ValidationResult = {
 };
 
 const ZERO = BigInt(0);
+const TWO = BigInt(2);
+/** 엑셀에서 표 아래 합계 줄까지 같이 복사했을 때의 이름 (공백을 지운 뒤 이름 전체가 같을 때만) */
+const TOTAL_ROW_NAME = /^(합계|소계|총계|총합계|계|합|total|subtotal|sum)$/i;
 
 export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseInput): ValidationResult {
   const errors: Issue[] = [];
@@ -52,6 +55,12 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   for (const row of rows) {
     if (row.name === "") {
       errors.push({ line: row.line, message: `${row.line}행: 채권자명이 비어 있습니다.` });
+    } else if (TOTAL_ROW_NAME.test(row.name.replace(/\s/g, ""))) {
+      // 합계 행이 채권자로 들어가면 총 채권액이 두 배가 되어 모든 배당금이 오류 없이 틀린다 (CHECK 1번)
+      errors.push({
+        line: row.line,
+        message: `${row.line}행: "${row.name}"은(는) 합계 행으로 보입니다. 합계·소계 행은 빼고 채권자만 붙여넣으세요.`,
+      });
     }
     if (row.amountText === "") {
       errors.push({ line: row.line, message: `${row.line}행: 확정 채권액이 비어 있습니다.` });
@@ -82,6 +91,20 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   // 여기부터는 모든 값이 정상이다
   const claims = rows.map((row) => row.amount as bigint);
   const totalClaims = claims.reduce((sum, c) => sum + c, ZERO);
+
+  // 이름이 "합계"가 아니어도 금액이 나머지 채권액 합계와 같으면 합계 행일 수 있다 (CHECK 1번).
+  // 우연히 같을 수도 있으므로 막지 않고 경고만 한다. 2명뿐이면 서로 같은 금액일 수 있어 건너뛴다.
+  if (rows.length >= 3) {
+    claims.forEach((claim, i) => {
+      if (claim * TWO === totalClaims) {
+        const line = rows[i].line;
+        warnings.push({
+          line,
+          message: `${line}행 금액이 나머지 채권액을 모두 더한 값과 같습니다. 합계 행이면 빼고 붙여넣으세요.`,
+        });
+      }
+    });
+  }
 
   // 배당재원이 총 채권액보다 큰 경우 (규칙 9)
   if ((pool as bigint) > totalClaims) {
