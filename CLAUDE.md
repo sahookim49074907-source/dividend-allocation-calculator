@@ -18,10 +18,14 @@ npm run dev                          # 개발 서버 (http://localhost:3000, .cl
 npm run build                        # 프로덕션 빌드
 npm run lint                         # ESLint (파일 하나: npx eslint lib/allocate.ts)
 npx tsc --noEmit -p .                # 타입 검사
-node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 CSV 5건 vs 앱 계산)
+npm test                             # 함수 자동 시험 (Vitest, lib/*.test.ts)
+npx vitest run lib/csv.test.ts       # 시험 파일 하나만
+npx vitest run -t "끝전"             # 이름에 "끝전"이 들어간 시험만
+node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 CSV 5건 vs 엑셀 손계산 정답)
 ```
 
-테스트 프레임워크는 없다. 시험은 `test-cases/check.mjs` 하나이고, 폴더 안의 모든 `*.csv`를 비교한다. 사례 하나만 보려면 다른 CSV를 잠시 다른 폴더로 옮긴다. 함수를 따로 확인할 때는 Node 24의 TypeScript 실행 기능을 쓴다. 이때 `.ts`를 확장자까지 붙여 import하는 임시 스크립트를 프로젝트 밖(스크래치 폴더)에 만들고, Windows 절대경로는 `file:///C:/...` 형식으로 쓴다.
+- **함수 시험:** Vitest 4.1.11을 쓴다. Vitest 5는 `@types/node` 22 이상을 요구해 지금 설정(20)과 맞지 않는다. 시험 파일은 대상 파일 옆에 `이름.test.ts`로 둔다.
+- **엑셀 정답 시험:** `test-cases/check.mjs`는 폴더 안의 모든 `*.csv`를 엑셀 손계산 정답과 비교한다. Vitest 시험과는 별개다.
 
 ## 이 Next.js 버전 주의 (AGENTS.md)
 
