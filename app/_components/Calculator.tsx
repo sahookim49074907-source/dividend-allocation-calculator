@@ -32,6 +32,20 @@ export default function Calculator() {
   const [pasteText, setPasteText] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
+  const [resultCleared, setResultCleared] = useState(false);
+
+  /**
+   * 입력 칸이 바뀌면 이전 결과를 지운다 (PLAN 작업 14: 규칙 13)
+   * 예전 결과를 그대로 내려받는 실수를 막기 위해, 다시 계산해야 결과와 내려받기가 나타난다.
+   */
+  function onInput(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value);
+      if (result) setResultCleared(true);
+      setResult(null);
+      setCalcError(null);
+    };
+  }
 
   const parsed = parsePaste(pasteText);
   // 입력이 바뀔 때마다 바로 점검한다. 오류가 하나라도 있으면 계산 버튼을 막는다 (규칙 8)
@@ -44,6 +58,7 @@ export default function Calculator() {
     event.preventDefault();
     const ready = validation.ready;
     if (!ready) return;
+    setResultCleared(false);
     try {
       // 안분 → 끝전 배분 → 합계 검증. 1원이라도 맞지 않으면 오류가 나서 결과를 보여주지 않는다 (규칙 3)
       const dividends = calculateDividends(ready.pool, ready.claims);
@@ -63,7 +78,7 @@ export default function Calculator() {
           <input
             id="caseNumber"
             value={caseNumber}
-            onChange={(e) => setCaseNumber(e.target.value)}
+            onChange={(e) => onInput(setCaseNumber)(e.target.value)}
             placeholder="예: 2026하합123"
             className={inputClass}
           />
@@ -73,7 +88,7 @@ export default function Calculator() {
             <input
               id="round"
               value={roundText}
-              onChange={(e) => setRoundText(e.target.value)}
+              onChange={(e) => onInput(setRoundText)(e.target.value)}
               inputMode="numeric"
               className={`${inputClass} w-20 text-right`}
             />
@@ -84,7 +99,7 @@ export default function Calculator() {
           <input
             id="pool"
             value={poolText}
-            onChange={(e) => setPoolText(e.target.value)}
+            onChange={(e) => onInput(setPoolText)(e.target.value)}
             inputMode="numeric"
             placeholder="예: 10,000,000"
             className={`${inputClass} text-right`}
@@ -102,7 +117,7 @@ export default function Calculator() {
         <textarea
           id="creditors"
           value={pasteText}
-          onChange={(e) => setPasteText(e.target.value)}
+          onChange={(e) => onInput(setPasteText)(e.target.value)}
           placeholder={PASTE_EXAMPLE}
           rows={12}
           spellCheck={false}
@@ -134,6 +149,11 @@ export default function Calculator() {
         )}
       </div>
 
+      {resultCleared && (
+        <p role="status" className="rounded-md bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
+          입력이 바뀌어 이전 계산 결과를 지웠습니다. [계산하기]를 다시 눌러 주세요.
+        </p>
+      )}
       {calcError && <IssueList tone="error" title="계산 결과를 표시할 수 없습니다" issues={[{ message: calcError }]} />}
       {result && <ResultTable result={result} />}
     </form>
