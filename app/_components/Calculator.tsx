@@ -95,6 +95,7 @@ export default function Calculator() {
             id="caseNumber"
             value={caseNumber}
             onChange={(e) => onInput(setCaseNumber)(e.target.value)}
+            maxLength={100} // 한도(50자)를 넘으면 안내가 뜨도록 여유를 두되, 아주 긴 글은 막는다 (SEC-003)
             placeholder="예: 2026하합123"
             className={inputClass}
           />
@@ -105,6 +106,7 @@ export default function Calculator() {
               id="round"
               value={roundText}
               onChange={(e) => onInput(setRoundText)(e.target.value)}
+              maxLength={5}
               inputMode="numeric"
               className={`${inputClass} w-20 text-right`}
             />
@@ -116,6 +118,7 @@ export default function Calculator() {
             id="pool"
             value={poolText}
             onChange={(e) => onInput(setPoolText)(e.target.value)}
+            maxLength={30}
             inputMode="numeric"
             placeholder="예: 10,000,000"
             className={`${inputClass} text-right`}

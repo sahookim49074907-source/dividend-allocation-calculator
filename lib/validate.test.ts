@@ -154,3 +154,35 @@ describe("그 밖의 낮음 항목 (CHECK 12번)", () => {
     expect(r.warnings[0].message).toContain("1행은(는) 탭이 아닌 공백으로");
   });
 });
+
+describe("보이지 않는 문자 추가 목록 (SEC-004)", () => {
+  it("한글 채움 문자를 붙인 이름도 같은 이름으로 경고한다", () => {
+    const r = check({ poolText: "100", paste: "가상채권자01\t100\n가상채권자01\u3164\t200\n가상채권자03\t400" });
+    expect(r.warnings.map((w) => w.message)).toContain(
+      "같은 이름 \"가상채권자01\"이(가) 1, 2행에 있습니다. 각각 별개의 채권으로 계산합니다.",
+    );
+  });
+
+  it("보이지 않는 문자만 있는 이름은 빈칸으로 막는다", () => {
+    const r = check({ paste: "\u3164\u00AD\t100" });
+    expect(r.errors.map((e) => e.message)).toEqual(["1행: 채권자명이 비어 있습니다."]);
+  });
+
+  it("태그 문자(U+E0000대)도 지운다", () => {
+    expect(check({ poolText: "100", paste: "가상\uDB40\uDC41채권자\t100" }).ready?.names).toEqual(["가상채권자"]);
+  });
+});
+
+describe("아주 긴 숫자 (SEC-003)", () => {
+  it("20자리가 넘는 숫자는 BigInt로 바꾸지 않고 너무 크다고 막는다", () => {
+    const run = () => check({ poolText: "9".repeat(300000), paste: "가상채권자01\t100" });
+    expect(run().errors.map((e) => e.message)).toContain("배당재원이 너무 큽니다. 999조 원(15자리)까지 입력할 수 있습니다.");
+    const t = Date.now();
+    for (let i = 0; i < 20; i++) run();
+    expect(Date.now() - t).toBeLessThan(1000);
+  });
+
+  it("앞에 0이 아주 많아도 값이 작으면 정상으로 읽는다", () => {
+    expect(check({ poolText: "0".repeat(100) + "50", paste: "가상채권자01\t100" }).ready?.pool).toBe(BigInt(50));
+  });
+});

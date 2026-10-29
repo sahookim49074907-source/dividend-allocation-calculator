@@ -29,10 +29,13 @@ export type ParseResult = {
 };
 
 /**
- * 보이지 않는 문자: 글자 방향 제어(U+202A~202E, U+2066~2069 등), 폭 없는 공백(U+200B~200D), BOM(U+FEFF).
- * 다른 문서에서 복사할 때 섞여 들어오며, 화면·인쇄에서 글자 순서를 뒤집거나 같은 이름을 다르게 보이게 한다 (CHECK 10번).
+ * 보이지 않는 문자: 글자 방향 제어(U+202A~202E, U+2066~2069 등), 폭 없는 공백(U+200B~200D), BOM(U+FEFF),
+ * 한글 채움 문자(U+3164 등), 보이지 않는 하이픈(U+00AD), 태그 문자(U+E0000~E007F) 등.
+ * 다른 문서에서 복사할 때 섞여 들어오며, 화면·인쇄에서 글자 순서를 뒤집거나 같은 이름을 다르게 보이게 하고,
+ * 이름 칸이 비어 보이는데 빈칸 검사를 통과하게 한다 (CHECK 10번, SEC-004).
+ * 파일명(csv.ts)도 이 한 곳의 목록을 쓴다. 대상이 ES2017이라 \p{...} 정규식은 못 쓰므로 글자를 하나씩 적는다.
  */
-const INVISIBLE = /[\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+const INVISIBLE = /[\u00AD\u034F\u061C\u115F-\u1160\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\u3164\uFEFF\uFFA0\uFFF9-\uFFFB]|\uDB40[\uDC00-\uDC7F]/g;
 
 export function stripInvisible(text: string): string {
   return text.replace(INVISIBLE, "");
@@ -51,10 +54,18 @@ const HEADER_WORDS = /금액|채권액|amount/i;
  * 쉼표·공백·"원"·원화 기호(₩, ￦)를 지운 뒤 0 이상의 정수로 읽는다. 음수·소수·글자가 섞이면 null.
  * 엑셀 회계 서식은 0을 "-"로 보여주므로, "-" 하나만 남으면 0으로 읽는다 (입력 점검에서 0원 안내).
  */
+/** 이보다 자리가 많은 숫자는 BigInt로 바꾸지 않는다 */
+const HUGE_DIGITS = 20;
+const HUGE_AMOUNT = BigInt("1" + "0".repeat(HUGE_DIGITS));
+
 export function parseAmount(text: string): bigint | null {
   const cleaned = text.replace(/[,\s원₩￦]/g, "");
   if (cleaned === "-") return BigInt(0);
-  return /^\d+$/.test(cleaned) ? BigInt(cleaned) : null;
+  if (!/^\d+$/.test(cleaned)) return null;
+  // 아주 긴 숫자를 입력할 때마다 BigInt로 바꾸면 화면이 느려진다. 앞의 0을 뺀 뒤 20자리를 넘으면
+  // 변환하지 않고 한도(15자리)를 넘는 큰 값 하나로 읽어, 입력 점검이 "너무 큽니다"로 막게 한다 (SEC-003).
+  const digits = cleaned.replace(/^0+(?=\d)/, "");
+  return digits.length > HUGE_DIGITS ? HUGE_AMOUNT : BigInt(digits);
 }
 
 /**
