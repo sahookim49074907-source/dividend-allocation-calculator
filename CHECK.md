@@ -31,12 +31,12 @@
 |---|---|---|---|
 | SEC-004 | 낮음 | 한글 채움 문자(U+3164 등)·보이지 않는 하이픈·태그 문자가 목록에 빠져 같은 이름 경고·빈칸 검사를 피할 수 있음 (목록이 parse.ts·csv.ts에 따로 있음) | ✅ 해결: 목록을 parse.ts 한 곳으로 합치고 글자를 추가, csv.ts는 가져다 씀 |
 | SEC-003 | 낮음 | 한도 검사가 BigInt 변환 뒤라 아주 긴 숫자에서 느려질 수 있고 입력 칸 글자 수 제한 없음 | ✅ 해결: 앞의 0을 뺀 20자리 초과는 변환 없이 '너무 큼'으로 처리, 입력 칸 maxLength(사건번호 100·차수 5·배당재원 30) |
-| SEC-002 | 낮음 | HSTS·COOP 헤더 없음 (Vercel이 자동으로 붙이는 것으로 알고 있음) | 배포 후 응답 헤더 확인 필요 |
+| SEC-002 | 낮음 | HSTS·COOP 헤더 없음 (Vercel이 자동으로 붙이는 것으로 알고 있음) | ✅ 2026-10-29 배포 후 확인: Vercel이 `Strict-Transport-Security`를 붙이고 보안 헤더 5개와 `X-Powered-By` 제거도 적용됨. COOP는 없으나 이 앱은 팝업·외부 창을 쓰지 않아 그대로 둠 |
 | SEC-001 | 낮음 | CSP script-src의 'unsafe-inline' (nonce 없는 정적 페이지 방식을 고른 결과, 현재 스크립트가 끼어들 곳 없음) | 그대로 둠 (Next 문서 'Without Nonces' 방식 유지) |
 | SEC-005 | 참고 | .vercelignore에 .bkit·.claude·trash-can 제외 | ✅ 이미 반영됨 |
 | SEC-006 | 참고 | .env 토큰 4개는 앱이 쓰지 않음. 개발 컴퓨터 쪽 위험이므로 권한 최소화·만료일, 안 쓰는 토큰(OpenAI·Supabase) 폐기 검토 | 사용자 판단 |
 
-**배포 후 할 일:** 응답 헤더 확인(SEC-002), Vercel 대시보드 Source 화면에서 `.env`·`.bkit`·`.claude`·`trash-can`이 없는지 확인.
+**배포 후 할 일:** 응답 헤더 확인(SEC-002)은 끝남. Vercel 대시보드 Source 화면에서 `.env`·`.bkit`·`.claude`·`trash-can`이 없는지는 사용자가 한 번 확인 (Vercel 로그인 필요).
 
 ## 1. 성공 기준 점검 (PLAN.md)
 
