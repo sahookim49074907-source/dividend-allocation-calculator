@@ -24,7 +24,7 @@ npx vitest run -t "끝전"             # 이름에 "끝전"이 들어간 시험�
 node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 CSV 5건 vs 엑셀 손계산 정답)
 ```
 
-- **함수 시험:** Vitest 4.1.11을 쓴다. Vitest 5는 `@types/node` 22 이상을 요구해 지금 설정(20)과 맞지 않는다. 시험 파일은 대상 파일 옆에 `이름.test.ts`로 둔다.
+- **함수 시험:** Vitest 4.1.12를 쓴다. Vitest 5는 `@types/node` 22 이상을 요구해 지금 설정(20)과 맞지 않는다. 시험 파일은 대상 파일 옆에 `이름.test.ts`로 둔다.
 - **엑셀 정답 시험:** `test-cases/check.mjs`는 폴더 안의 모든 `*.csv`를 엑셀 손계산 정답과 비교한다. Vitest 시험과는 별개다.
 
 ## 이 Next.js 버전 주의 (AGENTS.md)
