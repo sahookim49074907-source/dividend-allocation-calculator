@@ -4,9 +4,10 @@
 // 모든 계산은 브라우저 안에서만 하고, 입력한 데이터를 서버로 보내지 않는다 (PRD 7번).
 // 배치: 왼쪽은 입력, 오른쪽은 입력하는 대로 바뀌는 요약 패널, 계산 결과 표는 그 아래에 둔다.
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { calculateDividends } from "@/lib/allocate";
 import { buildStatementCsv, statementFileName } from "@/lib/csv";
+import { importCreditorFile } from "@/lib/excel";
 import { dividendRate, formatWon, totalRate } from "@/lib/format";
 import { parseAmount, parsePaste, stripInvisible } from "@/lib/parse";
 import { validateInput, type Issue } from "@/lib/validate";
@@ -35,6 +36,8 @@ export default function Calculator() {
   const [result, setResult] = useState<Result | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
   const [resultCleared, setResultCleared] = useState(false);
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   /**
    * 입력 칸이 바뀌면 이전 결과를 지운다 (PLAN 작업 14: 규칙 13)
@@ -76,6 +79,25 @@ export default function Calculator() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [touched]);
+
+  /**
+   * 엑셀(.xlsx)·CSV 파일에서 채권자 목록 불러오기 (PLAN 작업 21)
+   * 파일은 이 브라우저 안에서만 읽고, 읽은 내용은 붙여넣기 칸에 넣어 기존 입력 점검을 그대로 거친다.
+   */
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // 같은 파일을 고쳐서 다시 고를 수 있게 비운다
+    if (!file) return;
+    setFileNote(null);
+    setFileError(null);
+    try {
+      const imported = await importCreditorFile(file);
+      onInput(setPasteText)(imported.text);
+      setFileNote(`${file.name}: ${imported.note}`);
+    } catch (e) {
+      setFileError(`${file.name}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,12 +169,34 @@ export default function Calculator() {
               <StepTitle step={2} title="채권자 목록" />
             </label>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              엑셀에서 <b>채권자명</b>과 <b>확정 채권액</b> 두 열을 복사해 붙여넣으세요. 첫 줄의 머리글은 자동으로 건너뜁니다.
+              엑셀에서 <b>채권자명</b>과 <b>확정 채권액</b> 두 열을 복사해 붙여넣거나, 엑셀 파일을 불러오세요. 첫 줄의 머리글은 자동으로 건너뜁니다.
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <label className="cursor-pointer rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand-dark hover:bg-tint focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand dark:text-ice dark:hover:bg-ink-soft">
+                엑셀 파일에서 불러오기
+                <input type="file" accept=".xlsx,.csv" onChange={handleFile} className="sr-only" />
+              </label>
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                .xlsx·.csv · 첫 번째 시트에서 &quot;채권자명&quot;·&quot;확정 채권액&quot; 열을 찾아 읽습니다. 파일은 이 브라우저 안에서만 읽습니다.
+              </span>
+            </div>
+            {fileNote && (
+              <p role="status" className="mt-2 rounded-lg bg-tint px-3 py-2 text-sm text-brand-dark dark:bg-ink-soft dark:text-ice">
+                📄 {fileNote} 아래 목록을 확인하세요.
+              </p>
+            )}
+            {fileError && (
+              <p role="alert" className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+                ❌ {fileError}
+              </p>
+            )}
             <textarea
               id="creditors"
               value={pasteText}
-              onChange={(e) => onInput(setPasteText)(e.target.value)}
+              onChange={(e) => {
+                onInput(setPasteText)(e.target.value);
+                setFileNote(null);
+              }}
               placeholder={PASTE_EXAMPLE}
               rows={12}
               spellCheck={false}

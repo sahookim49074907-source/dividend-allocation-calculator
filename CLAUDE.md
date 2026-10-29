@@ -19,7 +19,7 @@ npm run build                        # 프로덕션 빌드
 npm run lint                         # ESLint (파일 하나: npx eslint lib/allocate.ts)
 npx tsc --noEmit -p .                # 타입 검사
 npm test                             # 함수 자동 시험 (Vitest, lib/*.test.ts)
-npx vitest run lib/csv.test.ts       # 시험 파일 하나만
+npx vitest run lib/csv.test.ts       # 시험 파일 하나만 (엑셀 읽기: lib/excel.test.ts, 시험용 파일 lib/__fixtures__/)
 npx vitest run -t "끝전"             # 이름에 "끝전"이 들어간 시험만
 node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 CSV 5건 vs 엑셀 손계산 정답)
 ```
@@ -47,7 +47,7 @@ node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 
 - **시험 스크립트는 `.mjs`:** tsconfig `include`에 `.mjs`가 없어서, `../lib/allocate.ts`를 import해도 타입 검사·빌드에 걸리지 않는다.
 - **시험 CSV 형식:** 1행은 `배당재원`, 2행은 머리글, 3행부터 `번호,채권자명,확정채권액,엑셀정답`이다.
   - **엑셀정답** 열은 앱 코드가 아닌 엑셀 수식(README 방법)으로 계산한 값이어야 한다. 앱 코드로 계산해서 채우면 시험의 의미가 없어지므로 그렇게 하지 않는다. 지금 값은 사용자 지시로 Claude가 엑셀 COM으로 README 수식을 실행해 채운 것이다.
-- **현재 상태:** must 기능 구현 완료(PLAN 1~3, 5~17, 19)와 nice 20(인쇄) 완료. 화면은 `app/_components/Calculator.tsx` 하나에 있다. 남은 작업은 PLAN 18(사람 작업 시간 측정)·21(엑셀 파일 올리기, 추가 라이브러리 결정 필요)이다.
+- **현재 상태:** must 기능 구현 완료(PLAN 1~17, 19)와 nice 20(인쇄) 완료. 화면은 `app/_components/Calculator.tsx` 하나에 있다. nice 21(엑셀·CSV 파일 불러오기, `lib/excel.ts`)도 완료. 남은 작업은 PLAN 18(사람 작업 시간 측정)이다.
 
 ## 범위 제한
 
@@ -95,4 +95,9 @@ node --no-warnings test-cases/check.mjs   # 계산 정답 시험 (가상 사례 
 5. **통과하면 git 커밋**으로 그 상태를 남긴다.
    - 커밋 메시지는 한국어로, 무엇을 왜 바꿨는지 한 줄로 쓴다.
    - 검증을 통과하지 못한 상태는 커밋하지 않는다.
-6. **무엇을 왜 바꿨는지 한 줄로 요약**해 사용자에게 알려준다.
+6. **커밋하면 바로 GitHub에 push하고 Vercel에 프로덕션 재배포**한다 (사용자 지시, 2026-10-29). 따로 묻지 않는다.
+   - push: `.env`의 `GITHUB_TOKEN`을 `git -c http.extraHeader=...`로 그 명령에만 넘긴다. remote 주소나 git 설정에 토큰을 저장하지 않는다.
+   - 배포: `VERCEL_TOKEN`을 환경변수로만 넘기고 `npx vercel deploy --prod --yes`를 실행한다. **`--token` 인자로 넘기지 않는다** (npm이 실행 명령을 그대로 출력해 토큰이 화면에 드러난 적이 있다).
+   - 명령 출력은 토큰 값을 `***`로 가린 뒤 보여준다. 배포 뒤 공개 주소가 200으로 열리는지 확인한다.
+   - `vercel link`가 만드는 `.env.local`은 `trash-can/`으로 옮긴다.
+7. **무엇을 왜 바꿨는지 한 줄로 요약**해 사용자에게 알려준다.
