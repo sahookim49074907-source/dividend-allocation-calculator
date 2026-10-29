@@ -11,13 +11,24 @@
 }
 
 :root {
-  --background: #ffffff;
+  --background: #f3f6f7;
   --foreground: #171717;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+}
+
+/* 앱 색: 짙은 잉크 청록(신뢰·정확) + 금색 포인트(숫자 강조). 발표 자료와 같은 색이다 */
+@theme {
+  --color-ink: #0f2d3a;
+  --color-ink-soft: #1b4352;
+  --color-brand: #2a7f86;
+  --color-brand-dark: #1f6369;
+  --color-gold: #d9a441;
+  --color-tint: #eaf1f2;
+  --color-ice: #cfe3e6;
 }
 
 @media (prefers-color-scheme: dark) {
