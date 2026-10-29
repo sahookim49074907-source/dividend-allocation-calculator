@@ -50,6 +50,8 @@ export function statementFileName(caseNumber: string, round: bigint): string {
   const safeCase =
     caseNumber
       .trim()
+      // 보이지 않는 방향 제어 문자는 파일명 글자 순서를 뒤집어 보이게 하므로 지운다 (CHECK 10번)
+      .replace(/[\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g, "")
       .replace(/[\/\\:*?"<>|\u0000-\u001f]/g, "_")
       .replace(/[. ]+$/, "") || "사건번호없음";
   return `${safeCase}_${round}차배당_안분내역서.csv`;

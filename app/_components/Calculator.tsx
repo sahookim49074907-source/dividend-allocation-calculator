@@ -7,7 +7,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { calculateDividends } from "@/lib/allocate";
 import { buildStatementCsv, statementFileName } from "@/lib/csv";
 import { dividendRate, formatWon, totalRate } from "@/lib/format";
-import { parsePaste } from "@/lib/parse";
+import { parsePaste, stripInvisible } from "@/lib/parse";
 import { validateInput, type Issue } from "@/lib/validate";
 
 /** 계산이 끝난 한 건의 결과. 화면 표와 CSV가 이 값 하나를 함께 쓴다 */
@@ -76,7 +76,8 @@ export default function Calculator() {
     try {
       // 안분 → 끝전 배분 → 합계 검증. 1원이라도 맞지 않으면 오류가 나서 결과를 보여주지 않는다 (규칙 3)
       const dividends = calculateDividends(ready.pool, ready.claims);
-      setResult({ caseNumber: caseNumber.trim(), ...ready, dividends });
+      // 사건번호의 보이지 않는 문자(글자 방향 제어 등)는 화면·인쇄·CSV에 넣기 전에 지운다 (CHECK 10번)
+      setResult({ caseNumber: stripInvisible(caseNumber).trim(), ...ready, dividends });
       setCalcError(null);
     } catch (e) {
       setResult(null);

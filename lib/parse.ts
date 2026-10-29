@@ -22,7 +22,19 @@ export type ParseResult = {
   headerText: string | null;
   /** 붙여넣은 글이 MAX_PASTE_LENGTH보다 길어 읽지 않았는지 */
   tooLong: boolean;
+  /** 보이지 않는 문자를 지운 줄 번호 (입력 점검에서 경고로 알려준다) */
+  invisibleLines: number[];
 };
+
+/**
+ * 보이지 않는 문자: 글자 방향 제어(U+202A~202E, U+2066~2069 등), 폭 없는 공백(U+200B~200D), BOM(U+FEFF).
+ * 다른 문서에서 복사할 때 섞여 들어오며, 화면·인쇄에서 글자 순서를 뒤집거나 같은 이름을 다르게 보이게 한다 (CHECK 10번).
+ */
+const INVISIBLE = /[\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+
+export function stripInvisible(text: string): string {
+  return text.replace(INVISIBLE, "");
+}
 
 /**
  * 붙여넣기 글자 수 한도. 1,000명 × 한 줄 100자여도 10만 자라 넉넉하다.
@@ -61,13 +73,18 @@ function splitLine(line: string): [string, string, number] {
 }
 
 export function parsePaste(text: string): ParseResult {
-  if (text.length > MAX_PASTE_LENGTH) return { rows: [], headerSkipped: false, headerText: null, tooLong: true };
+  if (text.length > MAX_PASTE_LENGTH) {
+    return { rows: [], headerSkipped: false, headerText: null, tooLong: true, invisibleLines: [] };
+  }
   const lines = text.split(/\r?\n/);
   const rows: ParsedRow[] = [];
+  const invisibleLines: number[] = [];
   let headerText: string | null = null;
 
-  lines.forEach((raw, i) => {
+  lines.forEach((original, i) => {
+    const raw = stripInvisible(original);
     if (raw.trim() === "") return;
+    if (raw !== original) invisibleLines.push(i + 1);
     const [name, amountText, columnCount] = splitLine(raw);
     const amount = parseAmount(amountText);
 
@@ -80,5 +97,5 @@ export function parsePaste(text: string): ParseResult {
     rows.push({ line: i + 1, name, amountText, amount, columnCount });
   });
 
-  return { rows, headerSkipped: headerText !== null, headerText, tooLong: false };
+  return { rows, headerSkipped: headerText !== null, headerText, tooLong: false, invisibleLines };
 }

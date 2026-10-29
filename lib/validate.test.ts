@@ -125,3 +125,17 @@ describe("길이·자릿수 한도 (CHECK 9번)", () => {
     expect(messages(r)).toContain("붙여넣은 글이 너무 깁니다");
   });
 });
+
+describe("보이지 않는 문자 (CHECK 10번)", () => {
+  it("이름의 글자 방향 제어·폭 없는 공백을 지우고 경고한다", () => {
+    const r = check({ poolText: "700", paste: "가상\u202E채권자01\t100\n가상채권자02\u200B\t200\n가상채권자03\t400" });
+    expect(r.ready?.names).toEqual(["가상채권자01", "가상채권자02", "가상채권자03"]);
+    expect(r.warnings.map((w) => w.message)).toEqual([
+      "1, 2행에 있던 보이지 않는 문자(글자 방향 제어 등)를 지웠습니다. 이름이 맞는지 확인하세요.",
+    ]);
+  });
+
+  it("보이지 않는 문자만 있는 사건번호는 빈칸으로 본다", () => {
+    expect(check({ caseNumber: "\u202E\u200B", paste: "가상채권자01\t100" }).errors[0].message).toBe("사건번호를 입력하세요.");
+  });
+});

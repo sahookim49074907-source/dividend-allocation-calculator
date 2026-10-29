@@ -75,3 +75,9 @@ describe("statementFileName (must 2 규칙 4)", () => {
     expect(statementFileName(caseNumber, B(round))).toBe(name);
   });
 });
+
+describe("statementFileName: 보이지 않는 문자 (CHECK 10번)", () => {
+  it("글자 방향 제어 문자를 지운다", () => {
+    expect(statementFileName("2026하합\u202E123", B(1))).toBe("2026하합123_1차배당_안분내역서.csv");
+  });
+});

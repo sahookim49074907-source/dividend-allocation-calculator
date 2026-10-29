@@ -1,7 +1,7 @@
 // 입력 점검 (PLAN 작업 6: PRD must 1 규칙 6~10)
 // 오류(errors)가 하나라도 있으면 [계산하기]를 막는다. 경고(warnings)는 알려주기만 하고 계산은 허용한다.
 
-import { MAX_PASTE_LENGTH, parseAmount, type ParseResult } from "./parse";
+import { MAX_PASTE_LENGTH, parseAmount, stripInvisible, type ParseResult } from "./parse";
 
 export const MAX_CREDITORS = 1000;
 /**
@@ -44,9 +44,10 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   const warnings: Issue[] = [];
 
   // 사건 정보 칸
-  if (caseNumber.trim() === "") {
+  const caseText = stripInvisible(caseNumber).trim();
+  if (caseText === "") {
     errors.push({ message: "사건번호를 입력하세요." });
-  } else if (caseNumber.trim().length > MAX_CASE_NUMBER_LENGTH) {
+  } else if (caseText.length > MAX_CASE_NUMBER_LENGTH) {
     errors.push({ message: `사건번호는 ${MAX_CASE_NUMBER_LENGTH}자까지 입력할 수 있습니다.` });
   }
 
@@ -107,6 +108,16 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
     } else if (row.amount > MAX_AMOUNT) {
       errors.push({ line: row.line, message: `${row.line}행: 확정 채권액이 너무 큽니다. 999조 원(15자리)까지 입력할 수 있습니다.` });
     }
+  }
+
+  // 보이지 않는 문자(글자 방향 제어 등)는 parsePaste가 이미 지웠다. 지운 사실만 알려준다 (CHECK 10번)
+  if (parsed.invisibleLines.length > 0) {
+    const shown = parsed.invisibleLines.slice(0, 10).join(", ");
+    const more = parsed.invisibleLines.length > 10 ? ` 외 ${parsed.invisibleLines.length - 10}줄` : "";
+    warnings.push({
+      line: parsed.invisibleLines[0],
+      message: `${shown}행${more}에 있던 보이지 않는 문자(글자 방향 제어 등)를 지웠습니다. 이름이 맞는지 확인하세요.`,
+    });
   }
 
   // 같은 이름 (규칙 10): 막지 않고 경고만
