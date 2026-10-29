@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 배당안분 계산기
 
-## Getting Started
+파산사건의 **배당재원을 채권자별 확정 채권액 비율로 나누고(안분)**, **파산배당금 안분 내역서를 CSV로 내려받게 해 주는** 웹 앱입니다.
 
-First, run the development server:
+엑셀로 직접 하던 안분 계산과 합계 검증을 붙여넣기 한 번으로 끝내는 것이 목표입니다. 누가 계산해도 같은 결과가 나오므로 검토와 업무 인수인계가 쉬워집니다.
+
+> 이 저장소의 사례와 채권자 이름은 모두 직접 만든 **가상 데이터**입니다. 실제 사건 데이터는 쓰지 않았습니다.
+
+## 쓰는 방법
+
+1. 사건번호, 배당 차수, 배당재원을 입력합니다.
+2. 엑셀에서 **채권자명**과 **확정 채권액** 두 열을 복사해 채권자 목록 칸에 붙여넣습니다.
+3. 빈칸·잘못된 금액·합계 행 등이 있으면 화면이 행 번호와 함께 알려 줍니다.
+4. **[계산하기]**를 누르면 채권자별 배당금·배당률 표와 "합계 = 배당재원" 검증 결과가 나옵니다.
+5. **[안분 내역서 내려받기 (CSV)]**로 엑셀에서 바로 열리는 내역서를 받거나, **[인쇄하기]**로 A4 양식으로 인쇄합니다.
+
+## 계산 규칙
+
+- 배당금 = `배당재원 × (채권자의 확정 채권액 ÷ 총 확정 채권액)`, 원 미만은 버립니다.
+- 버리고 남은 금액(끝전)은 버린 소수점 이하가 큰 채권자부터 1원씩 나눠 줍니다. 같으면 목록에서 먼저 나온 채권자에게 줍니다.
+- 모든 계산은 소수(부동소수점) 없이 **정수(`bigint`)로만** 합니다. 곱한 값이 9천조를 넘어도 1원의 오차가 없습니다.
+- 계산이 끝나면 배당금 합계와 배당재원의 차이가 **0원**이어야 하며, 1원이라도 다르면 결과를 보여주지 않습니다.
+
+## 개인정보·보안
+
+- 계산과 CSV 만들기는 **모두 브라우저 안에서만** 합니다. 입력한 데이터는 서버로 보내지 않고, 저장하지 않고, 로그로 남기지 않습니다. 로그인과 데이터베이스도 없습니다.
+- 받는 항목은 채권자명과 채권액뿐입니다.
+- CSV는 엑셀이 수식으로 실행하지 않도록 `=`, `+`, `-`, `@`로 시작하는 글자 앞에 `'`를 붙이고, 파일명의 금지 문자는 `_`로 바꿉니다.
+- 보안 헤더(CSP, 프레임 삽입 방지 등)를 적용했습니다.
+
+## 만들지 않은 것
+
+순위가 다른 채권 처리, 여러 차례 배당 누적, 이의·소송 채권 유보, 로그인, 데이터 저장, AI 판단, HWP·PDF 출력, 외부 시스템 연동은 이번 범위에 넣지 않았습니다. 자세한 범위는 [PRD.md](PRD.md)에 있습니다.
+
+## 기술
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Vitest. Vercel에 배포합니다.
+
+## 개발
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # 개발 서버 (http://localhost:3000)
+npm test         # 함수 자동 시험 (Vitest)
+npm run lint     # 코드 검사
+npm run build    # 프로덕션 빌드
+
+node --no-warnings test-cases/check.mjs   # 가상 사례 5건 vs 엑셀 계산 정답 대조
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 문서
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| 문서 | 내용 |
+|---|---|
+| [PRD.md](PRD.md) | 서비스 기획서: 문제, 목표, 기능과 지켜야 할 규칙, 범위, 보안 |
+| [PLAN.md](PLAN.md) | 개발 계획: 성공 기준과 작업 순서·진행 상태 |
+| [DESIGN.md](DESIGN.md) | 설계: 화면, 데이터 흐름, 기술 선택, 시험 계획 |
+| [CHECK.md](CHECK.md) | 점검 결과: 설계 대비 구현, 공개 전 보안 점검, 보완 항목 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 시험
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm test`: 안분·끝전·합계 검증·붙여넣기·입력 점검·표시 형식·CSV를 확인하는 자동 시험입니다.
+- `test-cases/`: 가상 사례 5건을 **엑셀 수식으로 계산한 정답**과 앱 결과를 원 단위까지 비교합니다. 이 시험은 계산 실수가 없는지를 확인하며, 끝전 규칙이 실무와 같은지는 PRD를 기준으로 합니다.
