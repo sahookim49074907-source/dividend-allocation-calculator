@@ -139,3 +139,18 @@ describe("보이지 않는 문자 (CHECK 10번)", () => {
     expect(check({ caseNumber: "\u202E\u200B", paste: "가상채권자01\t100" }).errors[0].message).toBe("사건번호를 입력하세요.");
   });
 });
+
+describe("그 밖의 낮음 항목 (CHECK 12번)", () => {
+  it("띄어쓰기·(주)/㈜/주식회사 표기만 다른 이름도 같은 이름으로 경고한다", () => {
+    const r = check({ poolText: "100", paste: "㈜가나\t100\n주식회사 가나\t200\n(주) 가나\t400\n가상채권자04\t800" });
+    expect(r.warnings.map((w) => w.message)).toEqual([
+      '같은 이름 "㈜가나"이(가) 1, 2, 3행에 있습니다. 각각 별개의 채권으로 계산합니다.',
+    ]);
+  });
+
+  it("공백으로 나눈 줄은 확인을 부탁하는 경고를 띄운다", () => {
+    const r = check({ poolText: "100", paste: "가상채권자01 100\n가상채권자02\t200" });
+    expect(r.ready).not.toBeNull();
+    expect(r.warnings[0].message).toContain("1행은(는) 탭이 아닌 공백으로");
+  });
+});

@@ -86,7 +86,8 @@ export default function Calculator() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+    // autoComplete="off": 사건번호·금액이 브라우저 자동완성 기록에 남지 않게 한다 (CHECK 12번)
+    <form onSubmit={handleSubmit} autoComplete="off" className="mt-8 space-y-6">
       <fieldset className="grid gap-4 sm:grid-cols-3 print:hidden">
         <legend className="mb-2 text-lg font-semibold">사건 정보</legend>
         <Field label="사건번호" htmlFor="caseNumber">
@@ -193,8 +194,12 @@ function ResultTable({ result }: { result: Result }) {
     const link = document.createElement("a");
     link.href = url;
     link.download = statementFileName(caseNumber, round);
+    // 일부 브라우저(파이어폭스·사파리)는 화면에 붙인 링크만 누를 수 있고,
+    // 주소를 바로 지우면 저장이 시작되기 전에 끊길 수 있어 잠시 뒤에 지운다 (CHECK 12번)
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (

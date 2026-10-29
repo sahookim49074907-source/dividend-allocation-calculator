@@ -24,6 +24,8 @@ export type ParseResult = {
   tooLong: boolean;
   /** 보이지 않는 문자를 지운 줄 번호 (입력 점검에서 경고로 알려준다) */
   invisibleLines: number[];
+  /** 탭이 없어 공백으로 이름과 금액을 나눈 줄 번호 (나눈 위치가 맞는지 경고로 확인을 부탁한다) */
+  spaceSplitLines: number[];
 };
 
 /**
@@ -59,33 +61,105 @@ export function parseAmount(text: string): bigint | null {
  * 한 줄을 [채권자명, 금액 글자]로 나눈다. 엑셀 복사는 탭으로 나뉜다.
  * 탭이 없으면 맨 끝의 공백 없는 숫자 덩어리 하나만 금액으로 본다 ("가상 채권자 01  1,234,567원" → 이름에 01이 남음).
  */
-function splitLine(line: string): [string, string, number] {
+function splitLine(line: string): [string, string, number, boolean] {
   if (line.includes("\t")) {
     const cells = line.split("\t").map((cell) => cell.trim());
     // 엑셀이 줄 끝에 붙이는 빈 칸은 열로 세지 않는다
     while (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
     const [name = "", amount = ""] = cells;
-    return [name, amount, cells.length];
+    return [name, amount, cells.length, false];
   }
   const match = line.match(/^(.*\S)\s+([₩￦]?-?[\d,.]+\s?원?)\s*$/);
-  if (match) return [match[1].trim(), match[2].trim(), 2];
-  return [line.trim(), "", 1];
+  if (match) return [match[1].trim(), match[2].trim(), 2, true];
+  return [line.trim(), "", 1, false];
+}
+
+/**
+ * 붙여넣은 글을 행으로 나눈다 (CHECK 12번).
+ * - 줄바꿈은 \r\n(윈도우), \n, \r(옛 맥) 모두 받는다.
+ * - 엑셀은 칸 안에 줄바꿈(Alt+Enter)이 있으면 그 칸을 "..."로 감싸 복사한다. 감싼 칸 안의 줄바꿈은 공백으로 바꿔 한 행으로 읽는다.
+ * line은 그 행이 시작한 줄 번호다.
+ */
+function splitRecords(text: string): { text: string; line: number }[] {
+  const records: { text: string; line: number }[] = [];
+  let current = "";
+  let line = 1;
+  let start = 1;
+  let fieldStart = true;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (fieldStart && ch === '"') {
+      const quoted = readQuotedCell(text, i);
+      if (quoted) {
+        current += quoted.value;
+        line += quoted.newlines;
+        i = quoted.end;
+        fieldStart = false;
+        continue;
+      }
+    }
+    if (ch === "\r" || ch === "\n") {
+      records.push({ text: current, line: start });
+      i += ch === "\r" && text[i + 1] === "\n" ? 2 : 1;
+      line += 1;
+      start = line;
+      current = "";
+      fieldStart = true;
+      continue;
+    }
+    current += ch;
+    fieldStart = ch === "\t";
+    i += 1;
+  }
+  records.push({ text: current, line: start });
+  return records;
+}
+
+/** i 위치의 "로 시작하는 칸을 읽는다. 닫는 " 뒤가 탭·줄바꿈·끝이 아니면 감싼 칸이 아니므로 null */
+function readQuotedCell(text: string, i: number): { value: string; end: number; newlines: number } | null {
+  let value = "";
+  let newlines = 0;
+  let j = i + 1;
+  while (j < text.length) {
+    const ch = text[j];
+    if (ch === '"') {
+      if (text[j + 1] === '"') {
+        value += '"';
+        j += 2;
+        continue;
+      }
+      const after = text[j + 1];
+      return after === undefined || after === "\t" || after === "\r" || after === "\n"
+        ? { value, end: j + 1, newlines }
+        : null;
+    }
+    if (ch === "\r" || ch === "\n") {
+      j += ch === "\r" && text[j + 1] === "\n" ? 2 : 1;
+      newlines += 1;
+      value += " ";
+      continue;
+    }
+    value += ch;
+    j += 1;
+  }
+  return null;
 }
 
 export function parsePaste(text: string): ParseResult {
   if (text.length > MAX_PASTE_LENGTH) {
-    return { rows: [], headerSkipped: false, headerText: null, tooLong: true, invisibleLines: [] };
+    return { rows: [], headerSkipped: false, headerText: null, tooLong: true, invisibleLines: [], spaceSplitLines: [] };
   }
-  const lines = text.split(/\r?\n/);
   const rows: ParsedRow[] = [];
   const invisibleLines: number[] = [];
+  const spaceSplitLines: number[] = [];
   let headerText: string | null = null;
 
-  lines.forEach((original, i) => {
+  splitRecords(text).forEach(({ text: original, line }) => {
     const raw = stripInvisible(original);
     if (raw.trim() === "") return;
-    if (raw !== original) invisibleLines.push(i + 1);
-    const [name, amountText, columnCount] = splitLine(raw);
+    if (raw !== original) invisibleLines.push(line);
+    const [name, amountText, columnCount, spaceSplit] = splitLine(raw);
     const amount = parseAmount(amountText);
 
     // 첫 번째 내용 줄의 금액 칸이 숫자가 아니고, 줄에 머리글 낱말(금액·채권액)이 있을 때만 건너뛴다.
@@ -94,8 +168,9 @@ export function parsePaste(text: string): ParseResult {
       headerText = raw.trim();
       return;
     }
-    rows.push({ line: i + 1, name, amountText, amount, columnCount });
+    if (spaceSplit) spaceSplitLines.push(line);
+    rows.push({ line, name, amountText, amount, columnCount });
   });
 
-  return { rows, headerSkipped: headerText !== null, headerText, tooLong: false, invisibleLines };
+  return { rows, headerSkipped: headerText !== null, headerText, tooLong: false, invisibleLines, spaceSplitLines };
 }

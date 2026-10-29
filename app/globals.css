@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/*
+ * dark: 색은 화면에서만 쓴다 (CHECK 12번).
+ * 기본값은 인쇄할 때도 다크 모드 색(연한 회색 글씨·어두운 배경)이 들어가 종이에서 흐리게 나온다.
+ */
+@custom-variant dark {
+  @media screen and (prefers-color-scheme: dark) {
+    @slot;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -39,6 +49,10 @@ body {
   }
   thead {
     display: table-header-group;
+  }
+  /* 합계 행은 마지막 쪽에만 (일부 브라우저는 tfoot을 쪽마다 반복한다, CHECK 12번) */
+  tfoot {
+    display: table-row-group;
   }
   tr {
     break-inside: avoid;

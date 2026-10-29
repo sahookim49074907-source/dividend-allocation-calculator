@@ -39,6 +39,21 @@ const TWO = BigInt(2);
 /** 엑셀에서 표 아래 합계 줄까지 같이 복사했을 때의 이름 (공백을 지운 뒤 이름 전체가 같을 때만) */
 const TOTAL_ROW_NAME = /^(합계|소계|총계|총합계|계|합|total|subtotal|sum)$/i;
 
+/** 줄 번호 목록 글자: "1, 2, 3행" (10개가 넘으면 " 외 N줄"을 붙인다) */
+function lineList(lines: number[]): string {
+  const more = lines.length > 10 ? ` 외 ${lines.length - 10}줄` : "";
+  return `${lines.slice(0, 10).join(", ")}행${more}`;
+}
+
+/** 같은 이름 비교용 열쇠. NFKC는 전각 글자를 보통 글자로, ㈜를 (주)로 바꾼다 */
+function nameKey(name: string): string {
+  return name
+    .normalize("NFKC")
+    .replace(/\s/g, "")
+    .toLowerCase()
+    .replace(/\(주\)|주식회사/g, "(주)");
+}
+
 export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseInput): ValidationResult {
   const errors: Issue[] = [];
   const warnings: Issue[] = [];
@@ -112,21 +127,31 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
 
   // 보이지 않는 문자(글자 방향 제어 등)는 parsePaste가 이미 지웠다. 지운 사실만 알려준다 (CHECK 10번)
   if (parsed.invisibleLines.length > 0) {
-    const shown = parsed.invisibleLines.slice(0, 10).join(", ");
-    const more = parsed.invisibleLines.length > 10 ? ` 외 ${parsed.invisibleLines.length - 10}줄` : "";
     warnings.push({
       line: parsed.invisibleLines[0],
-      message: `${shown}행${more}에 있던 보이지 않는 문자(글자 방향 제어 등)를 지웠습니다. 이름이 맞는지 확인하세요.`,
+      message: `${lineList(parsed.invisibleLines)}에 있던 보이지 않는 문자(글자 방향 제어 등)를 지웠습니다. 이름이 맞는지 확인하세요.`,
     });
   }
 
-  // 같은 이름 (규칙 10): 막지 않고 경고만
-  const linesByName = new Map<string, number[]>();
+  // 탭 없이 공백으로 나눈 줄은 맨 끝 숫자를 금액으로 짐작한 것이라 확인을 부탁한다 (CHECK 12번)
+  if (parsed.spaceSplitLines.length > 0) {
+    warnings.push({
+      line: parsed.spaceSplitLines[0],
+      message: `${lineList(parsed.spaceSplitLines)}은(는) 탭이 아닌 공백으로 이름과 금액을 나눴습니다. 결과 표에서 이름과 금액이 맞게 나뉘었는지 확인하세요.`,
+    });
+  }
+
+  // 같은 이름 (규칙 10): 막지 않고 경고만.
+  // 띄어쓰기·전각 글자·영문 대소문자·(주)/㈜/주식회사 표기만 다른 이름도 같은 이름으로 본다 (CHECK 12번)
+  const linesByName = new Map<string, { name: string; lines: number[] }>();
   for (const row of rows) {
     if (row.name === "") continue;
-    linesByName.set(row.name, [...(linesByName.get(row.name) ?? []), row.line]);
+    const key = nameKey(row.name);
+    const entry = linesByName.get(key) ?? { name: row.name, lines: [] };
+    entry.lines.push(row.line);
+    linesByName.set(key, entry);
   }
-  for (const [name, lines] of linesByName) {
+  for (const { name, lines } of linesByName.values()) {
     if (lines.length > 1) {
       warnings.push({
         line: lines[0],
