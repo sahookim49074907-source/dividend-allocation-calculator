@@ -20,7 +20,15 @@ export type ParseResult = {
   headerSkipped: boolean;
   /** 건너뛴 첫 줄의 글 그대로. 화면에 보여줘서 사용자가 확인할 수 있게 한다 */
   headerText: string | null;
+  /** 붙여넣은 글이 MAX_PASTE_LENGTH보다 길어 읽지 않았는지 */
+  tooLong: boolean;
 };
+
+/**
+ * 붙여넣기 글자 수 한도. 1,000명 × 한 줄 100자여도 10만 자라 넉넉하다.
+ * 이보다 길면 읽지 않는다. 아주 긴 글을 글자마다 다시 읽느라 화면이 멈추는 것을 막는다 (CHECK 9번).
+ */
+export const MAX_PASTE_LENGTH = 200000;
 
 /** 머리글로 볼 낱말. 채권자명에는 잘 쓰이지 않는 금액 쪽 낱말만 쓴다 ("채권자"는 이름에도 들어가므로 제외) */
 const HEADER_WORDS = /금액|채권액|amount/i;
@@ -53,6 +61,7 @@ function splitLine(line: string): [string, string, number] {
 }
 
 export function parsePaste(text: string): ParseResult {
+  if (text.length > MAX_PASTE_LENGTH) return { rows: [], headerSkipped: false, headerText: null, tooLong: true };
   const lines = text.split(/\r?\n/);
   const rows: ParsedRow[] = [];
   let headerText: string | null = null;
@@ -71,5 +80,5 @@ export function parsePaste(text: string): ParseResult {
     rows.push({ line: i + 1, name, amountText, amount, columnCount });
   });
 
-  return { rows, headerSkipped: headerText !== null, headerText };
+  return { rows, headerSkipped: headerText !== null, headerText, tooLong: false };
 }

@@ -1,9 +1,18 @@
 // 입력 점검 (PLAN 작업 6: PRD must 1 규칙 6~10)
 // 오류(errors)가 하나라도 있으면 [계산하기]를 막는다. 경고(warnings)는 알려주기만 하고 계산은 허용한다.
 
-import { parseAmount, type ParseResult } from "./parse";
+import { MAX_PASTE_LENGTH, parseAmount, type ParseResult } from "./parse";
 
 export const MAX_CREDITORS = 1000;
+/**
+ * 금액 한도: 999조 9,999억 9,999만 9,999원 (15자리).
+ * 엑셀은 15자리까지만 정확히 다루므로, 이보다 크면 CSV를 엑셀에서 열 때 끝자리가 바뀐다 (CHECK 9번).
+ * 총 채권액도 CSV 합계 행에 들어가므로 같은 한도를 쓴다.
+ */
+export const MAX_AMOUNT = BigInt("999999999999999");
+export const MAX_ROUND = BigInt(999);
+export const MAX_CASE_NUMBER_LENGTH = 50;
+export const MAX_NAME_LENGTH = 100;
 
 export type Issue = {
   /** 붙여넣은 글의 줄 번호. 사건 정보 칸의 문제면 없음 */
@@ -35,17 +44,33 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   const warnings: Issue[] = [];
 
   // 사건 정보 칸
-  if (caseNumber.trim() === "") errors.push({ message: "사건번호를 입력하세요." });
+  if (caseNumber.trim() === "") {
+    errors.push({ message: "사건번호를 입력하세요." });
+  } else if (caseNumber.trim().length > MAX_CASE_NUMBER_LENGTH) {
+    errors.push({ message: `사건번호는 ${MAX_CASE_NUMBER_LENGTH}자까지 입력할 수 있습니다.` });
+  }
 
   const round = parseAmount(roundText);
-  if (round === null || round === ZERO) errors.push({ message: "배당 차수는 1 이상의 정수로 입력하세요." });
+  if (round === null || round === ZERO) {
+    errors.push({ message: "배당 차수는 1 이상의 정수로 입력하세요." });
+  } else if (round > MAX_ROUND) {
+    errors.push({ message: `배당 차수는 ${MAX_ROUND}차까지 입력할 수 있습니다.` });
+  }
 
   const pool = parseAmount(poolText);
-  if (pool === null || pool === ZERO) errors.push({ message: "배당재원은 1원 이상의 정수로 입력하세요." });
+  if (pool === null || pool === ZERO) {
+    errors.push({ message: "배당재원은 1원 이상의 정수로 입력하세요." });
+  } else if (pool > MAX_AMOUNT) {
+    errors.push({ message: "배당재원이 너무 큽니다. 999조 원(15자리)까지 입력할 수 있습니다." });
+  }
 
   // 채권자 수 (규칙 7)
   const { rows } = parsed;
-  if (rows.length === 0) {
+  if (parsed.tooLong) {
+    errors.push({
+      message: `붙여넣은 글이 너무 깁니다. (${MAX_PASTE_LENGTH.toLocaleString()}자까지) 채권자명과 확정 채권액 두 열만 복사했는지 확인하세요.`,
+    });
+  } else if (rows.length === 0) {
     errors.push({ message: "채권자 목록을 붙여넣으세요." });
   } else if (rows.length > MAX_CREDITORS) {
     errors.push({ message: `채권자는 ${MAX_CREDITORS.toLocaleString()}명까지 지원합니다. (지금 ${rows.length.toLocaleString()}명)` });
@@ -64,6 +89,8 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
     }
     if (row.name === "") {
       errors.push({ line: row.line, message: `${row.line}행: 채권자명이 비어 있습니다.` });
+    } else if (row.name.length > MAX_NAME_LENGTH) {
+      errors.push({ line: row.line, message: `${row.line}행: 채권자명이 ${MAX_NAME_LENGTH}자를 넘습니다.` });
     } else if (TOTAL_ROW_NAME.test(row.name.replace(/\s/g, ""))) {
       // 합계 행이 채권자로 들어가면 총 채권액이 두 배가 되어 모든 배당금이 오류 없이 틀린다 (CHECK 1번)
       errors.push({
@@ -77,6 +104,8 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
       errors.push({ line: row.line, message: `${row.line}행: 확정 채권액 "${row.amountText}"은(는) 1원 단위 정수가 아닙니다.` });
     } else if (row.amount === ZERO) {
       errors.push({ line: row.line, message: `${row.line}행: 확정 채권액이 0원입니다. 0원 채권자는 목록에서 빼고 입력하세요.` });
+    } else if (row.amount > MAX_AMOUNT) {
+      errors.push({ line: row.line, message: `${row.line}행: 확정 채권액이 너무 큽니다. 999조 원(15자리)까지 입력할 수 있습니다.` });
     }
   }
 
@@ -100,6 +129,10 @@ export function validateInput({ caseNumber, roundText, poolText, parsed }: CaseI
   // 여기부터는 모든 값이 정상이다
   const claims = rows.map((row) => row.amount as bigint);
   const totalClaims = claims.reduce((sum, c) => sum + c, ZERO);
+  if (totalClaims > MAX_AMOUNT) {
+    errors.push({ message: "총 채권액이 999조 원(15자리)을 넘어 엑셀에서 정확히 다룰 수 없습니다." });
+    return { errors, warnings, ready: null };
+  }
 
   // 이름이 "합계"가 아니어도 금액이 나머지 채권액 합계와 같으면 합계 행일 수 있다 (CHECK 1번).
   // 우연히 같을 수도 있으므로 막지 않고 경고만 한다. 2명뿐이면 서로 같은 금액일 수 있어 건너뛴다.

@@ -97,3 +97,31 @@ describe("validateInput", () => {
     expect(r.warnings[0].message).toContain("1, 3행");
   });
 });
+
+describe("길이·자릿수 한도 (CHECK 9번)", () => {
+  const messages = (r: ReturnType<typeof check>) => r.errors.map((e) => e.message).join("\n");
+
+  it("금액은 15자리(999조 원)까지 받는다", () => {
+    expect(check({ poolText: "999999999999999", paste: "가상채권자01\t999,999,999,999,999" }).ready).not.toBeNull();
+    expect(messages(check({ poolText: "1000000000000000", paste: "가상채권자01\t100" }))).toContain("배당재원이 너무 큽니다");
+    expect(messages(check({ paste: "가상채권자01\t1000000000000000" }))).toContain("1행: 확정 채권액이 너무 큽니다");
+  });
+
+  it("총 채권액이 15자리를 넘으면 막는다", () => {
+    const r = check({ paste: "가상채권자01\t999999999999999\n가상채권자02\t1" });
+    expect(r.ready).toBeNull();
+    expect(messages(r)).toContain("총 채권액이 999조 원");
+  });
+
+  it("사건번호·차수·채권자명 길이를 제한한다", () => {
+    expect(messages(check({ caseNumber: "가".repeat(51), paste: "가상채권자01\t100" }))).toContain("50자까지");
+    expect(messages(check({ roundText: "1000", paste: "가상채권자01\t100" }))).toContain("999차까지");
+    expect(messages(check({ paste: `${"가".repeat(101)}\t100` }))).toContain("1행: 채권자명이 100자를 넘습니다");
+  });
+
+  it("아주 긴 붙여넣기는 읽지 않고 오류로 알려준다", () => {
+    const r = check({ paste: "가".repeat(200001) });
+    expect(r.ready).toBeNull();
+    expect(messages(r)).toContain("붙여넣은 글이 너무 깁니다");
+  });
+});
