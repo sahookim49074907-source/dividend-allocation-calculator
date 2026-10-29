@@ -1,7 +1,8 @@
 // 안분 내역서 CSV 내용 만들기 (PLAN 작업 8: PRD must 2 규칙 1·2·3·5)
-// 금액은 엑셀에서 숫자로 계산·합계할 수 있도록 쉼표 없이 정수 그대로 쓴다.
+// 금액은 "1,234,567"처럼 쉼표를 넣고 따옴표로 감싼다. 엑셀이 숫자로 읽고(합계·계산 가능) 쉼표 서식까지 붙여 준다.
+// 쉼표 없는 정수로 쓰면 엑셀이 11자리 이상 금액을 1.23E+10처럼 지수로 보여준다 (CHECK 8번).
 
-import { dividendRate, totalRate } from "./format";
+import { dividendRate, formatWon, totalRate } from "./format";
 
 export type StatementInput = {
   caseNumber: string;
@@ -18,6 +19,11 @@ export type StatementInput = {
 /** 엑셀이 한글을 깨뜨리지 않고 UTF-8로 읽게 하는 표시 (규칙 3) */
 const BOM = "﻿";
 const ZERO = BigInt(0);
+
+/** 금액 칸: "1,234,567" (쉼표가 있어 따옴표로 감싼다) */
+function moneyCell(value: bigint): string {
+  return `"${formatWon(value)}"`;
+}
 
 /** 2026-10-28 형식 (사용자 컴퓨터의 날짜 기준) */
 export function formatDate(date: Date): string {
@@ -62,15 +68,16 @@ export function buildStatementCsv(input: StatementInput): string {
     // 머리글 (규칙 2)
     `사건번호,${textCell(caseNumber)}`,
     `배당 차수,${round}차`,
-    `배당재원,${pool}`,
+    `배당재원,${moneyCell(pool)}`,
     `작성일,${formatDate(today)}`,
     "",
     // 표 (규칙 1)
     "번호,채권자명,확정 채권액,배당률(%),배당금",
     ...names.map(
-      (name, i) => `${i + 1},${textCell(name)},${claims[i]},${dividendRate(dividends[i], claims[i])},${dividends[i]}`,
+      (name, i) =>
+        `${i + 1},${textCell(name)},${moneyCell(claims[i])},${dividendRate(dividends[i], claims[i])},${moneyCell(dividends[i])}`,
     ),
-    `합계,,${totalClaims},${totalRate(pool, totalClaims)},${totalDividends}`,
+    `합계,,${moneyCell(totalClaims)},${totalRate(pool, totalClaims)},${moneyCell(totalDividends)}`,
   ];
   return BOM + lines.join("\r\n") + "\r\n";
 }

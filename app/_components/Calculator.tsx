@@ -219,6 +219,11 @@ function ResultTable({ result }: { result: Result }) {
           </div>
         )}
       </div>
+      {verified && (
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 print:hidden">
+          CSV를 엑셀로 열었을 때 금액이 ####으로 보이면, 열 머리(C·E 등) 오른쪽 경계를 두 번 클릭해 열을 넓히세요.
+        </p>
+      )}
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {caseNumber} · {round.toString()}차 배당 · 배당재원 {formatWon(pool)}원 · 채권자 {names.length.toLocaleString()}명
       </p>
